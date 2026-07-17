@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+backend/dist/
+frontend/dist/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+backend/dev-server.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Prisma
+backend/prisma/*.db
+
+# User-uploaded documents (shop licenses, Aadhaar cards, shop photos, etc.)
+# — potentially sensitive PII, kept out of version control.
+backend/public/uploads/

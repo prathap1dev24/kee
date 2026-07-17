@@ -1,0 +1,81 @@
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CustomerService } from './customer.service';
+import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Role } from '@prisma/client';
+
+@Controller('shop/customers')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SHOP_ADMIN)
+export class CustomerController {
+  constructor(private readonly customerService: CustomerService) {}
+
+  @Post()
+  async createCustomer(@Request() req, @Body() dto: CreateCustomerDto) {
+    return this.customerService.createCustomer(req.user.shopId, dto);
+  }
+
+  @Get()
+  async getCustomers(@Request() req, @Query('search') search?: string) {
+    return this.customerService.getCustomers(req.user.shopId, search);
+  }
+
+  @Get('global-search')
+  async getGlobalCustomers(@Query('search') search?: string) {
+    return this.customerService.getSuperCustomers(search);
+  }
+
+  @Get(':id')
+  async getCustomerById(@Request() req, @Param('id') id: string) {
+    return this.customerService.getCustomerById(req.user.shopId, id);
+  }
+
+  @Post(':id/docs')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDoc(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('documentType') documentType: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Verification file document is required');
+    }
+    if (!documentType) {
+      throw new BadRequestException('documentType text is required');
+    }
+    // Size limit check (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File size exceeds the 5MB limit');
+    }
+    
+    // MIME type check
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Only JPEG, PNG, and PDF formats are accepted');
+    }
+
+    return this.customerService.addCustomerDocument(req.user.shopId, id, documentType, file);
+  }
+
+  @Delete(':id/docs/:docId')
+  async deleteDoc(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('docId') docId: string,
+  ) {
+    return this.customerService.deleteCustomerDocument(req.user.shopId, id, docId);
+  }
+
+  @Put(':id')
+  async updateCustomer(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomerDto,
+  ) {
+    return this.customerService.updateCustomer(req.user.shopId, id, dto);
+  }
+}
