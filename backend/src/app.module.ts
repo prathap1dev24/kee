@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AppController } from './app.controller';
 import { TenantModule } from './tenant/tenant.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AuthModule } from './auth/auth.module';
@@ -27,6 +28,7 @@ import { TenantInterceptor } from './tenant/tenant.interceptor';
     ProductModule,
     PromotionModule,
   ],
+  controllers: [AppController],
   providers: [
     {
       provide: APP_INTERCEPTOR,

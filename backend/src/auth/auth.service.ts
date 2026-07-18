@@ -29,59 +29,30 @@ export class AuthService implements OnModuleInit {
       });
 
       if (superAdminCount === 0) {
-        console.log('No Super Admin found. Auto-seeding default credentials...');
+        // Credentials are configurable via env vars so production deploys
+        // don't ship with a known hardcoded password. Falls back to the
+        // original dev-only defaults when unset (local Docker dev only).
+        const seedEmail = process.env.SEED_SUPER_ADMIN_EMAIL || 'admin@kee.com';
+        const seedPassword = process.env.SEED_SUPER_ADMIN_PASSWORD || 'adminpassword';
+        const seedName = process.env.SEED_SUPER_ADMIN_NAME || 'KEE Platform Administrator';
+
+        console.log('No Super Admin found. Auto-seeding Super Admin credentials...');
         const salt = await bcrypt.genSalt(12);
-        const passwordHash = await bcrypt.hash('adminpassword', salt);
+        const passwordHash = await bcrypt.hash(seedPassword, salt);
 
         await this.tenantService.prisma.user.create({
           data: {
-            email: 'admin@kee.com',
-            name: 'KEE Platform Administrator',
+            email: seedEmail,
+            name: seedName,
             passwordHash,
             role: Role.SUPER_ADMIN,
           },
         });
-        console.log('Auto-seeded Super Admin: admin@kee.com / adminpassword');
-        
-        // Also create a demo Shop and Shop Admin
-        const demoShop = await this.tenantService.prisma.shop.create({
-          data: {
-            name: 'Metro Duplicate Keys (Shop A)',
-            themeColor: '#4CAF50',
-            companyDetails: JSON.stringify({
-              address: '123 Main St, New Delhi, India',
-              gst: '07AAAAA1111A1Z1',
-              phone: '+919999999999',
-            }),
-          },
-        });
+        console.log(`Auto-seeded Super Admin: ${seedEmail}`);
 
-        const shopSalt = await bcrypt.genSalt(12);
-        const shopPasswordHash = await bcrypt.hash('shoppassword', shopSalt);
-
-        await this.tenantService.prisma.user.create({
-          data: {
-            email: 'shop@kee.com',
-            name: 'Metro Key Shop Admin',
-            passwordHash: shopPasswordHash,
-            role: Role.SHOP_ADMIN,
-            shopId: demoShop.id,
-          },
-        });
-
-        // Set up subscription for Shop (the free trial plan has been retired -
-        // demo/seeded shops now get a standard Monthly plan like any real signup)
-        await this.tenantService.prisma.subscription.create({
-          data: {
-            shopId: demoShop.id,
-            plan: 'MONTHLY',
-            status: 'ACTIVE',
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          },
-        });
-
-        console.log('Auto-seeded Demo Shop Admin: shop@kee.com / shoppassword');
+        // Intentionally no demo Shop/Shop Admin is seeded here. In production,
+        // shop accounts are created through the app's own self-registration
+        // flow (or by the Super Admin via "Provision New Shop"), not auto-seeded.
       }
     } catch (err) {
       console.error('Error during auto-seeding:', err.message);
