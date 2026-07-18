@@ -69,8 +69,17 @@ export class FileService implements OnModuleInit {
 
     if (this.useFirebase && this.bucket) {
       const file = this.bucket.file(uniqueName);
+      // contentDisposition: 'attachment' is what actually makes mobile
+      // browsers save the file to the device instead of navigating to/
+      // previewing it in a tab. Since these files are served directly from
+      // storage.googleapis.com (not proxied through our API), this header
+      // must be baked in at upload time — it can't be set per-request later.
+      const safeName = (originalname || uniqueName).replace(/[^a-zA-Z0-9._-]/g, '_');
       await file.save(buffer, {
-        metadata: { contentType: CONTENT_TYPE_BY_EXT[fileExt.toLowerCase()] || 'application/octet-stream' },
+        metadata: {
+          contentType: CONTENT_TYPE_BY_EXT[fileExt.toLowerCase()] || 'application/octet-stream',
+          contentDisposition: `attachment; filename="${safeName}"`,
+        },
         public: true,
         resumable: false,
       });

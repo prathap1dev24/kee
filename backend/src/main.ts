@@ -31,8 +31,19 @@ async function bootstrap() {
   // Global prefix for API
   app.setGlobalPrefix('api');
 
-  // Serve static files
-  app.use('/api/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+  // Serve static files. Content-Disposition: attachment forces mobile/desktop
+  // browsers to actually save the file to the device instead of navigating
+  // to/previewing it in a tab (the HTML `download` attribute alone is only
+  // honored for same-origin links and isn't reliable on mobile even then).
+  app.use(
+    '/api/uploads',
+    express.static(path.join(process.cwd(), 'public', 'uploads'), {
+      setHeaders: (res, filePath) => {
+        const filename = path.basename(filePath).replace(/[^a-zA-Z0-9._-]/g, '_');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      },
+    }),
+  );
 
   // Global validation pipes
   app.useGlobalPipes(new ValidationPipe({

@@ -23,30 +23,29 @@ export const getAssetUrl = (url) => {
   return url.startsWith('/api') ? `${API_BASE}${url}` : url;
 };
 
-// Plain <a href download> only forces a download for same-origin URLs —
-// browsers ignore the `download` attribute cross-origin and just navigate
-// to it instead (which is what shows a raw JSON error page for a missing
-// file, or opens the asset in a new tab instead of saving it). Since the
-// frontend (Firebase Hosting) and backend (Render) are different origins,
-// fetch the file as a blob ourselves and trigger the download from a local
-// blob: URL instead, which is always same-origin. Also gives a clean error
-// message instead of a blank page if the file no longer exists on the
-// server (e.g. lost after a container restart wiped local disk storage).
-export const downloadAsset = async (url, filename = 'document') => {
+// Triggers a real file download rather than a page/tab navigation.
+//
+// Earlier version of this fetched the file as a blob first (await
+// fetch(...).blob()) and clicked a blob: link afterwards. That broke on
+// mobile browsers: fetching a blob first introduces an async gap between
+// the user's tap and the click(), and most mobile browsers only allow
+// download-triggering actions within the synchronous call stack of the
+// original user gesture — once that gap exists, the browser falls back to
+// just opening/viewing the file instead of downloading it.
+//
+// The fix is a plain, synchronous <a> click (no await beforehand) so it
+// stays inside the gesture, combined with the backend now sending
+// `Content-Disposition: attachment` on these URLs (see file.service.ts and
+// main.ts) — that HTTP header is what actually forces a save-to-device
+// across every browser, same-origin or not, rather than relying on the
+// HTML `download` attribute (which browsers ignore cross-origin anyway).
+export const downloadAsset = (url, filename) => {
   if (!url) return;
-  try {
-    const response = await fetch(getAssetUrl(url));
-    if (!response.ok) throw new Error('File not found');
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(blobUrl);
-  } catch (err) {
-    alert('This file is no longer available on the server. It may have been lost during a recent system update — please re-upload it.');
-  }
+  const link = document.createElement('a');
+  link.href = getAssetUrl(url);
+  if (filename) link.download = filename;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
