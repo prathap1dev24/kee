@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from './context/AuthContext';
+import { getAssetUrl } from './apiConfig';
 import PublicSite from './components/PublicSite';
 import {
   Key, Users, Shield, Radio, Activity, BarChart3, Database, LogOut, Check, X,
@@ -3263,7 +3264,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                       <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', fontWeight: 700, textTransform: 'uppercase' }}>Shop Photo</span>
                       {editShopPhoto ? (
                         <div style={{ marginTop: 6, height: 56, width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-2)', background: '#000' }}>
-                          <img src={editShopPhoto} className="w-full h-full object-cover" alt="Shop Photo Preview" />
+                          <img src={getAssetUrl(editShopPhoto)} className="w-full h-full object-cover" alt="Shop Photo Preview" />
                         </div>
                       ) : (
                         <span style={{ fontSize: 9, color: 'var(--text-3)', fontStyle: 'italic', display: 'block', marginTop: 6 }}>Not Uploaded</span>
@@ -3271,7 +3272,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     </div>
                     {editShopPhoto && (
                       <a
-                        href={editShopPhoto}
+                        href={getAssetUrl(editShopPhoto)}
                         download="shop_photo.png"
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
@@ -3290,7 +3291,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                           {(editShopLicense.startsWith('data:application/pdf') || editShopLicense.toLowerCase().endsWith('.pdf')) ? (
                             <FileText style={{ width: 20, height: 20, color: 'var(--red)' }} />
                           ) : (
-                            <img src={editShopLicense} className="w-full h-full object-cover" alt="License Preview" />
+                            <img src={getAssetUrl(editShopLicense)} className="w-full h-full object-cover" alt="License Preview" />
                           )}
                         </div>
                       ) : (
@@ -3299,7 +3300,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     </div>
                     {editShopLicense && (
                       <a
-                        href={editShopLicense}
+                        href={getAssetUrl(editShopLicense)}
                         download="shop_license.pdf"
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
@@ -3928,7 +3929,7 @@ function SuperCustomersView({ api }) {
                 <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Webcam Photo</span>
                 {viewCust.photoUrl ? (
                   <div style={{ width: '100%', height: 128, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
-                    <img src={viewCust.photoUrl} alt="Customer snapshot" className="w-full h-full object-cover" />
+                    <img src={getAssetUrl(viewCust.photoUrl)} alt="Customer snapshot" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
@@ -3940,7 +3941,7 @@ function SuperCustomersView({ api }) {
                 <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Customer Signature</span>
                 {viewCust.signatureUrl ? (
                   <div style={{ width: '100%', height: 128, borderRadius: 12, background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10 }} className="flex items-center justify-center">
-                    <img src={viewCust.signatureUrl} alt="Signature drawing" className="max-h-full max-w-full object-contain" />
+                    <img src={getAssetUrl(viewCust.signatureUrl)} alt="Signature drawing" className="max-h-full max-w-full object-contain" />
                   </div>
                 ) : (
                   <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
@@ -3956,7 +3957,7 @@ function SuperCustomersView({ api }) {
                 {viewCust.documents.map(d => (
                   <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
                     <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
-                    <a href={d.fileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }} className="hover:underline">Download</a>
+                    <a href={getAssetUrl(d.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }} className="hover:underline">Download</a>
                   </div>
                 ))}
               </div>
@@ -6090,7 +6091,7 @@ function KeysSearchView({ api }) {
                         <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: 6 }}>Webcam Snapshot</span>
                         {selectedResult.customer.photoUrl ? (
                           <div style={{ width: '100%', height: 96, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
-                            <img src={selectedResult.customer.photoUrl} alt="Customer" className="w-full h-full object-cover" />
+                            <img src={getAssetUrl(selectedResult.customer.photoUrl)} alt="Customer" className="w-full h-full object-cover" />
                           </div>
                         ) : (
                           <div style={{ width: '100%', height: 96, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
@@ -6102,7 +6103,7 @@ function KeysSearchView({ api }) {
                         <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: 6 }}>Customer Signature</span>
                         {selectedResult.customer.signatureUrl ? (
                           <div style={{ width: '100%', height: 96, borderRadius: 12, background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 8 }} className="flex items-center justify-center">
-                            <img src={selectedResult.customer.signatureUrl} alt="Signature" className="max-h-full max-w-full object-contain" />
+                            <img src={getAssetUrl(selectedResult.customer.signatureUrl)} alt="Signature" className="max-h-full max-w-full object-contain" />
                           </div>
                         ) : (
                           <div style={{ width: '100%', height: 96, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
@@ -7302,7 +7303,7 @@ function CustomerHistoryView({ t, api }) {
                     <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Webcam Photo</span>
                     {selectedCust.photoUrl ? (
                       <div style={{ width: '100%', height: 128, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
-                        <img src={selectedCust.photoUrl} alt="Customer snapshot" className="w-full h-full object-cover" />
+                        <img src={getAssetUrl(selectedCust.photoUrl)} alt="Customer snapshot" className="w-full h-full object-cover" />
                       </div>
                     ) : (
                       <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
@@ -7314,7 +7315,7 @@ function CustomerHistoryView({ t, api }) {
                     <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Customer Signature</span>
                     {selectedCust.signatureUrl ? (
                       <div style={{ width: '100%', height: 128, borderRadius: 12, background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10 }} className="flex items-center justify-center">
-                        <img src={selectedCust.signatureUrl} alt="Signature drawing" className="max-h-full max-w-full object-contain" />
+                        <img src={getAssetUrl(selectedCust.signatureUrl)} alt="Signature drawing" className="max-h-full max-w-full object-contain" />
                       </div>
                     ) : (
                       <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
@@ -7333,7 +7334,7 @@ function CustomerHistoryView({ t, api }) {
                         <button
                           onClick={() => {
                             const link = document.createElement('a');
-                            link.href = d.fileUrl;
+                            link.href = getAssetUrl(d.fileUrl);
                             link.download = d.fileKey || 'document';
                             link.target = '_blank';
                             document.body.appendChild(link);
@@ -8137,7 +8138,7 @@ function ShopSettingsView({ t, api }) {
                             <FileText style={{ width: 15, height: 15 }} /> PDF File
                           </span>
                         ) : (
-                          <img src={value.fileUrl} className="w-full h-full object-cover" alt={`${label} Preview`} />
+                          <img src={getAssetUrl(value.fileUrl)} className="w-full h-full object-cover" alt={`${label} Preview`} />
                         )}
                       </div>
                     ) : (
@@ -8149,7 +8150,7 @@ function ShopSettingsView({ t, api }) {
                       {value ? (
                         <>
                           <a
-                            href={value.fileUrl}
+                            href={getAssetUrl(value.fileUrl)}
                             download={`${fileName}${isPdf ? '.pdf' : ''}`}
                             className="btn btn-primary btn-sm"
                             style={{ flex: 1, fontSize: 10.5, padding: '8px 10px' }}

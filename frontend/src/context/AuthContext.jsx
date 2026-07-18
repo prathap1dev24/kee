@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE } from '../apiConfig';
 
 const AuthContext = createContext(null);
 
@@ -34,7 +35,7 @@ export const AuthProvider = ({ children }) => {
         });
       } catch (err) {}
 
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -82,7 +83,7 @@ export const AuthProvider = ({ children }) => {
       config.body = isMultipart ? body : JSON.stringify(body);
     }
 
-    const response = await fetch(url, config);
+    const response = await fetch(`${API_BASE}${url}`, config);
 
     if (response.status === 401) {
       logout();
@@ -104,7 +105,7 @@ export const AuthProvider = ({ children }) => {
     },
 
     resetPasswordPublic: async (identifier, method, newPassword) => {
-      const response = await fetch('/api/auth/reset-password-public', {
+      const response = await fetch(`${API_BASE}/api/auth/reset-password-public`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, method, newPassword })
@@ -126,7 +127,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Phone number must be exactly 10 digits and cannot start with 0');
       }
 
-      const response = await fetch('/api/auth/send-otp', {
+      const response = await fetch(`${API_BASE}/api/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, method, purpose })
@@ -146,7 +147,7 @@ export const AuthProvider = ({ children }) => {
     },
 
     verifyOtp: async (identifier, method, purpose, code) => {
-      const response = await fetch('/api/auth/verify-otp', {
+      const response = await fetch(`${API_BASE}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, method, purpose, code })
@@ -159,7 +160,7 @@ export const AuthProvider = ({ children }) => {
     },
 
     registerShop: async (dto) => {
-      const response = await fetch('/api/auth/register-shop', {
+      const response = await fetch(`${API_BASE}/api/auth/register-shop`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dto)
@@ -173,7 +174,7 @@ export const AuthProvider = ({ children }) => {
 
     // Public landing-page shop search (no auth) - used by the "Find a Shop" search page.
     searchPublicShops: async (query = '') => {
-      const url = `/api/public/shops${query ? `?query=${encodeURIComponent(query)}` : ''}`;
+      const url = `${API_BASE}/api/public/shops${query ? `?query=${encodeURIComponent(query)}` : ''}`;
       const response = await fetch(url);
       if (!response.ok) {
         const err = await response.json();

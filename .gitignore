@@ -30,6 +30,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Firebase CLI local deploy cache
+.firebase/
+
 # Prisma
 backend/prisma/*.db
 
