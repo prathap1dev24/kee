@@ -309,31 +309,22 @@ export class ReportService {
     };
   }
 
-  getSupportConfig() {
-    const filePath = 'C:/Users/prath/.gemini/antigravity/scratch/kee/backend/support_config.json';
-    try {
-      const fs = require('fs');
-      if (fs.existsSync(filePath)) {
-        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-      }
-    } catch (e) {
-      console.warn('Failed to read support config file, using fallback defaults:', e);
+  async getSupportConfig() {
+    const config = await this.tenantService.prisma.platformConfig.findUnique({
+      where: { id: 'default' },
+    });
+    if (!config) {
+      return { whatsapp: '+91 98765 43210', videos: [] };
     }
-    return {
-      whatsapp: '+91 98765 43210',
-      careerUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      keyMakingUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-    };
+    return { whatsapp: config.whatsapp, videos: config.videos };
   }
 
-  updateSupportConfig(dto: { whatsapp: string; careerUrl: string; keyMakingUrl: string }) {
-    const filePath = 'C:/Users/prath/.gemini/antigravity/scratch/kee/backend/support_config.json';
-    try {
-      const fs = require('fs');
-      fs.writeFileSync(filePath, JSON.stringify(dto, null, 2), 'utf8');
-      return dto;
-    } catch (e) {
-      throw new Error('Failed to save support configuration: ' + e.message);
-    }
+  async updateSupportConfig(dto: { whatsapp: string; videos: { name: string; url: string }[] }) {
+    const updated = await this.tenantService.prisma.platformConfig.upsert({
+      where: { id: 'default' },
+      create: { id: 'default', whatsapp: dto.whatsapp, videos: dto.videos ?? [] },
+      update: { whatsapp: dto.whatsapp, videos: dto.videos ?? [] },
+    });
+    return { whatsapp: updated.whatsapp, videos: updated.videos };
   }
 }

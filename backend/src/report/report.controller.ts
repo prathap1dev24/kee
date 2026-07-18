@@ -79,7 +79,7 @@ export class ReportController {
   @Post('super/support-config')
   @Roles(Role.SUPER_ADMIN)
   async updateSupportConfig(
-    @Body() dto: { whatsapp: string; careerUrl: string; keyMakingUrl: string },
+    @Body() dto: { whatsapp: string; videos: { name: string; url: string }[] },
   ) {
     return this.reportService.updateSupportConfig(dto);
   }

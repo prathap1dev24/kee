@@ -394,3 +394,15 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
 }
+
+// Singleton row (fixed id "default") holding the Super Admin-managed global
+// support contact/training-video config shown to every shop. Previously
+// this was read/written to a hardcoded local file path left over from dev,
+// which crashed on any host other than that one machine - moved to
+// Postgres so it's both portable and durable across container restarts.
+model PlatformConfig {
+  id        String   @id @default("default")
+  whatsapp  String   @default("+91 98765 43210")
+  videos    Json     @default("[]")
+  updatedAt DateTime @updatedAt
+}
