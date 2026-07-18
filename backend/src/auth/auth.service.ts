@@ -160,14 +160,17 @@ export class AuthService implements OnModuleInit {
       }
     }
 
-    if (!delivered && process.env.NODE_ENV !== 'production') {
+    if (!delivered) {
       console.log(`[OTP dev fallback] No ${dto.method} provider configured — code for ${dto.identifier}: ${otpCode}`);
     }
 
-    // Dev/demo convenience only: surface the code in the API response so it can be
-    // logged to the browser console. Never included when a real provider delivered it,
-    // and never included in production.
-    const devCode = (!delivered && process.env.NODE_ENV !== 'production') ? otpCode : undefined;
+    // No SMTP/Twilio provider is configured yet, so there is currently no other way
+    // for a real (or testing) user to receive the code - surface it in the API
+    // response so the frontend can log it to the browser console. This is only ever
+    // included when delivery via a real provider failed/wasn't attempted, so as soon
+    // as SMTP_HOST/TWILIO_* env vars are set on this environment, delivered becomes
+    // true and the code stops being exposed here automatically.
+    const devCode = !delivered ? otpCode : undefined;
 
     return { success: true, delivered, ...(devCode ? { devCode } : {}) };
   }

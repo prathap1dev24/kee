@@ -145,18 +145,20 @@ function PublicFooter({ onNavigate }) {
             customers, keys, orders and reports in one place.
           </p>
         </div>
-        <div className="public-footer-links">
-          <span className="public-footer-heading">Explore</span>
-          <button type="button" onClick={() => onNavigate('home')}>Home</button>
-          <button type="button" onClick={() => onNavigate('search')}>Find a Shop</button>
-          <button type="button" onClick={() => onNavigate('about')}>About</button>
-          <button type="button" onClick={() => onNavigate('contact')}>Contact</button>
-        </div>
-        <div className="public-footer-links">
-          <span className="public-footer-heading">Get in touch</span>
-          <span className="public-footer-static"><Mail className="h-3.5 w-3.5" /> support@kee.app</span>
-          <span className="public-footer-static"><Phone className="h-3.5 w-3.5" /> +91 98765 43210</span>
-          <span className="public-footer-static"><MapPin className="h-3.5 w-3.5" /> New Delhi, India</span>
+        <div className="public-footer-link-cols">
+          <div className="public-footer-links">
+            <span className="public-footer-heading">Explore</span>
+            <button type="button" onClick={() => onNavigate('home')}>Home</button>
+            <button type="button" onClick={() => onNavigate('search')}>Find a Shop</button>
+            <button type="button" onClick={() => onNavigate('about')}>About</button>
+            <button type="button" onClick={() => onNavigate('contact')}>Contact</button>
+          </div>
+          <div className="public-footer-links">
+            <span className="public-footer-heading">Get in touch</span>
+            <span className="public-footer-static"><Mail className="h-3.5 w-3.5" /> support@kee.app</span>
+            <span className="public-footer-static"><Phone className="h-3.5 w-3.5" /> +91 98765 43210</span>
+            <span className="public-footer-static"><MapPin className="h-3.5 w-3.5" /> New Delhi, India</span>
+          </div>
         </div>
       </div>
       <div className="public-footer-bottom">

@@ -137,9 +137,9 @@ export const AuthProvider = ({ children }) => {
         throw new Error(err.message || 'Failed to send OTP code');
       }
       const result = await response.json();
-      // Dev/demo convenience: backend only includes devCode when running outside
-      // production and no real email/SMS provider is configured, so this never
-      // leaks a real OTP in a live deployment.
+      // Testing convenience: backend only includes devCode when no real email/SMS
+      // provider is configured for this environment (delivery failed/not attempted),
+      // so this stops appearing automatically once SMTP/Twilio are set up.
       if (result.devCode) {
         console.log(`%c[KEE DEV] OTP code for ${identifier}: ${result.devCode}`, 'color:#f0b90b; font-weight:bold; font-size:13px;');
       }

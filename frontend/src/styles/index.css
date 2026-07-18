@@ -801,6 +801,14 @@ select.sel:focus { border-color: var(--gold); }
   display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 32px;
 }
 @media (max-width: 700px) { .public-footer-inner { grid-template-columns: 1fr; } }
+/* Transparent on desktop so its two children (Explore / Get in touch) stay as
+   the grid's 2nd/3rd columns unchanged; becomes its own 2-column row on mobile
+   so the two link lists sit side by side (top-aligned) instead of stacking
+   full-width one under the other. */
+.public-footer-link-cols { display: contents; }
+@media (max-width: 700px) {
+  .public-footer-link-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+}
 .public-footer-links { display: flex; flex-direction: column; gap: 10px; }
 .public-footer-heading {
   font-family: var(--display); font-weight: 800; font-size: 11.5px;

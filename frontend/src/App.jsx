@@ -780,6 +780,55 @@ export default function App() {
           <PublicSite page={publicPage} onNavigate={setPublicPage} api={api} />
         ) : (
         <div className="login-shell">
+          <div className="login-side">
+            <div className="glow"></div>
+            <div className="side-copy">
+              <span className="pill-badge" style={{ marginBottom: 18 }}>
+                <span className="dot"></span>
+                Trusted by 500+ key shops across India
+              </span>
+              <h2>Run your shop<span className="gold-line">the smart, gold-standard way.</span></h2>
+              <p>Track duplicate keys, customers and store orders across every branch &mdash; one bold dashboard built for Indian locksmiths.</p>
+            </div>
+
+            <div className="phone-frame">
+              <div className="phone-notch"></div>
+              <div className="phone-screen">
+                <div className="p-head">
+                  <span className="p-title">Kee Dashboard</span>
+                  <span className="phone-badge"></span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="phone-stat">
+                    <div className="num">1,284</div>
+                    <div className="lbl">Customers</div>
+                  </div>
+                  <div className="phone-stat">
+                    <div className="num">3,910</div>
+                    <div className="lbl">Keys Cut</div>
+                  </div>
+                </div>
+                <div className="phone-mini-bars">
+                  <div className="mb" style={{ height: '35%' }}></div>
+                  <div className="mb" style={{ height: '55%' }}></div>
+                  <div className="mb" style={{ height: '40%' }}></div>
+                  <div className="mb" style={{ height: '72%' }}></div>
+                  <div className="mb" style={{ height: '58%' }}></div>
+                  <div className="mb" style={{ height: '90%' }}></div>
+                  <div className="mb" style={{ height: '64%' }}></div>
+                </div>
+                <div className="phone-row">
+                  <div className="dotpic"></div>
+                  <div className="lines"><div className="l1"></div><div className="l2"></div></div>
+                </div>
+                <div className="phone-row">
+                  <div className="dotpic"></div>
+                  <div className="lines"><div className="l1"></div><div className="l2"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="login-form-side">
             <div className="login-box animate-fade-in">
               <button type="button" className="back-to-home-link" onClick={() => setPublicPage('home')}>
@@ -857,55 +906,6 @@ export default function App() {
                 >
                   Create shop account
                 </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="login-side">
-            <div className="glow"></div>
-            <div className="side-copy">
-              <span className="pill-badge" style={{ marginBottom: 18 }}>
-                <span className="dot"></span>
-                Trusted by 500+ key shops across India
-              </span>
-              <h2>Run your shop<span className="gold-line">the smart, gold-standard way.</span></h2>
-              <p>Track duplicate keys, customers and store orders across every branch &mdash; one bold dashboard built for Indian locksmiths.</p>
-            </div>
-
-            <div className="phone-frame">
-              <div className="phone-notch"></div>
-              <div className="phone-screen">
-                <div className="p-head">
-                  <span className="p-title">Kee Dashboard</span>
-                  <span className="phone-badge"></span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="phone-stat">
-                    <div className="num">1,284</div>
-                    <div className="lbl">Customers</div>
-                  </div>
-                  <div className="phone-stat">
-                    <div className="num">3,910</div>
-                    <div className="lbl">Keys Cut</div>
-                  </div>
-                </div>
-                <div className="phone-mini-bars">
-                  <div className="mb" style={{ height: '35%' }}></div>
-                  <div className="mb" style={{ height: '55%' }}></div>
-                  <div className="mb" style={{ height: '40%' }}></div>
-                  <div className="mb" style={{ height: '72%' }}></div>
-                  <div className="mb" style={{ height: '58%' }}></div>
-                  <div className="mb" style={{ height: '90%' }}></div>
-                  <div className="mb" style={{ height: '64%' }}></div>
-                </div>
-                <div className="phone-row">
-                  <div className="dotpic"></div>
-                  <div className="lines"><div className="l1"></div><div className="l2"></div></div>
-                </div>
-                <div className="phone-row">
-                  <div className="dotpic"></div>
-                  <div className="lines"><div className="l1"></div><div className="l2"></div></div>
-                </div>
               </div>
             </div>
           </div>
