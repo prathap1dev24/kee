@@ -135,7 +135,14 @@ export const AuthProvider = ({ children }) => {
         const err = await response.json();
         throw new Error(err.message || 'Failed to send OTP code');
       }
-      return response.json();
+      const result = await response.json();
+      // Dev/demo convenience: backend only includes devCode when running outside
+      // production and no real email/SMS provider is configured, so this never
+      // leaks a real OTP in a live deployment.
+      if (result.devCode) {
+        console.log(`%c[KEE DEV] OTP code for ${identifier}: ${result.devCode}`, 'color:#f0b90b; font-weight:bold; font-size:13px;');
+      }
+      return result;
     },
 
     verifyOtp: async (identifier, method, purpose, code) => {

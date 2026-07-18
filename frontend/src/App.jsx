@@ -743,7 +743,6 @@ export default function App() {
     setRegSuccessMessage('');
     setRegOtpSent(false);
     setRegOtpVerified(false);
-    setRegOtpCode('');
     setRegOtpInput('');
     setRegOtpError('');
     setRegOtpLoading(false);
@@ -821,7 +820,8 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowAuthPassword(!showAuthPassword)}
-                      style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                      className="pwd-toggle-btn"
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
                     >
                       {showAuthPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -1334,7 +1334,8 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setShowRegPassword(!showRegPassword)}
-                      style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                      className="pwd-toggle-btn"
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
                     >
                       {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -1580,7 +1581,7 @@ export default function App() {
 
           {/* SIDEBAR NAVIGATION */}
           <aside
-            className={`sidebar w-72 md:w-64 flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-50 md:z-auto transition-transform duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+            className={`sidebar w-[78%] max-w-[260px] md:w-64 flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-50 md:z-auto transition-transform duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
             style={{ overflowY: 'auto' }}
           >
             <div className="brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1780,7 +1781,7 @@ export default function App() {
             {/* Top Workspace Header Bar */}
             <header className="flex justify-between items-center mb-6 relative z-50" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 20px' }}>
               <div className="flex items-center gap-3" style={{ minWidth: 0 }}>
-                <button className="icon-btn md:hidden" onClick={() => setMobileNavOpen(true)} style={{ flexShrink: 0 }}>
+                <button className="icon-btn md:hidden" onClick={() => setMobileNavOpen(v => !v)} style={{ flexShrink: 0 }}>
                   <Menu />
                 </button>
                 <div className="eyebrow truncate" style={{ marginBottom: 0 }}>
@@ -1806,7 +1807,7 @@ export default function App() {
 
                 {/* Notifications dropdown popup overlay */}
                 {showNotifDropdown && (
-                  <div className="card animate-fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 320, padding: 16, zIndex: 9999, textAlign: 'left' }}>
+                  <div className="card animate-fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 'min(320px, calc(100vw - 32px))', padding: 16, zIndex: 9999, textAlign: 'left' }}>
                     <div className="flex justify-between items-center" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 10, marginBottom: 10 }}>
                       <h3 style={{ fontSize: 13 }}>Notifications</h3>
                       {unreadCount > 0 && (
@@ -3742,9 +3743,7 @@ function SuperCustomersView({ api }) {
             <tbody>
               {customers.map(c => (
                 <tr key={c.id}>
-                  <td>
-                    <span className="badge badge-gold"><span className="dot" />{c.shop ? c.shop.name : 'Shop Workspace'}</span>
-                  </td>
+                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.shop ? c.shop.name : 'Shop Workspace'}</td>
                   <td>
                     <div className="cell-primary">{c.name}</div>
                   </td>
@@ -4792,7 +4791,7 @@ function AdsManagementView({ api }) {
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>No ad campaigns scheduled yet.</span>
         </div>
       ) : (
-        <div className="product-grid stagger-in" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        <div className="product-grid stagger-in">
           {ads.map(ad => {
             const meta = adTypeMeta(ad.type);
             const Icon = meta.icon;
@@ -5208,7 +5207,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
   return (
     <div>
       {!isSuperAdmin && (
-        <div className="flex justify-end" style={{ marginBottom: 16 }}>
+        <div className="flex justify-end" style={{ marginTop: 4, marginBottom: 18 }}>
           <button
             onClick={() => { resetForm(); setShowAddModal(true); }}
             className="btn btn-primary"
@@ -5230,7 +5229,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>{onlyOffers ? 'No offers published yet.' : 'No promotions published yet.'}</span>
         </div>
       ) : (
-        <div className="product-grid stagger-in" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        <div className="product-grid stagger-in">
           {promotions.map(promo => {
             const meta = typeMeta(promo.type);
             const Icon = meta.icon;
@@ -5249,10 +5248,10 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
                   )}
                 </div>
                 <div className="product-body">
-                  <div className="flex items-center justify-between">
-                    <span className="pname">{promo.title}</span>
+                  <div className="flex items-center justify-between" style={{ gap: 8 }}>
+                    <span className="pname" style={{ minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{promo.title}</span>
                     {promo.price != null && (
-                      <span className="badge badge-gold">
+                      <span className="badge badge-gold" style={{ flexShrink: 0 }}>
                         <IndianRupee className="h-3 w-3" style={{ display: 'inline', verticalAlign: '-1px' }} />
                         {Number(promo.price).toLocaleString('en-IN')}
                       </span>
@@ -5260,7 +5259,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
                   </div>
 
                   {promo.description && (
-                    <p className="cell-sub" style={{ fontSize: 11.5, minHeight: 32 }}>{promo.description}</p>
+                    <p className="cell-sub" style={{ fontSize: 11.5, minHeight: 32, wordBreak: 'break-word' }}>{promo.description}</p>
                   )}
 
                   {promo.type === 'OFFER' && (
@@ -5286,11 +5285,11 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
                   )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 11, color: 'var(--text-2)', background: 'var(--card-2)', border: '1px solid var(--border)', padding: 10, borderRadius: 12, fontWeight: 600 }}>
-                    <div>
+                    <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={promo.shop?.name || ''}>
                       <span style={{ color: 'var(--text-3)', display: 'block', fontWeight: 800, textTransform: 'uppercase', fontSize: 9.5, letterSpacing: '.04em' }}>Shop</span>
                       {promo.shop?.name || '—'}
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={promo.createdBy?.name || ''}>
                       <span style={{ color: 'var(--text-3)', display: 'block', fontWeight: 800, textTransform: 'uppercase', fontSize: 9.5, letterSpacing: '.04em' }}>Posted by</span>
                       {promo.createdBy?.name || '—'}
                     </div>
@@ -5917,13 +5916,13 @@ function KeysSearchView({ api }) {
         </div>
       </div>
 
-      <div className="card" style={{ display: 'flex', alignItems: 'center', padding: 0, marginBottom: 24 }}>
-        <div className="search-box" style={{ width: '100%', minWidth: 0, border: 'none', background: 'transparent', padding: '18px 22px' }}>
+      <div className="card" style={{ display: 'flex', alignItems: 'center', padding: 0, marginBottom: 'clamp(16px, 4vw, 24px)' }}>
+        <div className="search-box" style={{ width: '100%', minWidth: 0, border: 'none', background: 'transparent', padding: 'clamp(12px, 3vw, 18px) clamp(14px, 3vw, 22px)' }}>
           <Search />
           <input
             type="text" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by key code, vehicle number, customer location, category&hellip;"
-            style={{ fontSize: 14 }}
+            style={{ fontSize: 14, minWidth: 0 }}
           />
           {query && (
             <button onClick={() => setQuery('')} className="icon-btn" style={{ width: 26, height: 26 }}>
@@ -5960,9 +5959,9 @@ function KeysSearchView({ api }) {
                 <span className="product-tag">{r.keySpec.category}</span>
               </div>
               <div className="product-body">
-                <div className="flex items-center justify-between">
-                  <span className="pname">{r.keySpec.keyNumber}</span>
-                  <span className="pcat" style={{ marginBottom: 0 }}>{r.keySpec.brand}</span>
+                <div className="flex items-center justify-between" style={{ gap: 8 }}>
+                  <span className="pname" style={{ minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{r.keySpec.keyNumber}</span>
+                  <span className="pcat" style={{ marginBottom: 0, flexShrink: 0 }}>{r.keySpec.brand}</span>
                 </div>
                 <p className="pcat">Blank: {r.keySpec.blankNumber}</p>
                 {r.customer && (
@@ -6798,7 +6797,7 @@ function CustomerRegistrationWizard({ t, api }) {
               <p className="desc">Capture a live photo via webcam, or upload an existing image for the compliance record.</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22 }}>
-                <div style={{ width: 260, height: 200, borderRadius: 20, overflow: 'hidden', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="capture-preview" style={{ width: 260, height: 200, borderRadius: 20, overflow: 'hidden', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {isWebcamActive ? (
                     <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : photoBase64 ? (
@@ -6808,7 +6807,7 @@ function CustomerRegistrationWizard({ t, api }) {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%' }}>
                   {isWebcamActive ? (
                     <>
                       <button type="button" onClick={captureSnapshot} className="btn btn-primary btn-sm">
@@ -6843,7 +6842,7 @@ function CustomerRegistrationWizard({ t, api }) {
               <div className="field" style={{ maxWidth: 420, margin: '0 auto' }}>
                 <label style={{ textAlign: 'center' }}>Customer Signature</label>
                 {signatureBase64 ? (
-                  <div style={{ background: 'var(--card-2)', border: '1.5px solid var(--border-2)', borderRadius: 16, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="sig-frame" style={{ background: 'var(--card-2)', border: '1.5px solid var(--border-2)', borderRadius: 16, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <img src={signatureBase64} alt="Signature preview" style={{ height: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                   </div>
                 ) : (
@@ -6851,10 +6850,10 @@ function CustomerRegistrationWizard({ t, api }) {
                     ref={canvasRef} width={384} height={150}
                     onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing}
                     onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing}
-                    className="signature-canvas-container" style={{ width: '100%', height: 150 }}
+                    className="signature-canvas-container sig-frame" style={{ width: '100%', height: 150 }}
                   />
                 )}
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 14 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 16 }}>
                   {!signatureBase64 ? (
                     <>
                       <button type="button" onClick={clearSignature} className="btn btn-ghost btn-sm">Clear</button>
@@ -7007,8 +7006,8 @@ function CustomerRegistrationWizard({ t, api }) {
             </button>
           ) : <span />}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <span style={{ fontSize: 12.5, color: 'var(--text-3)', fontWeight: 700 }}>Step {step} of {WIZARD_STEPS.length}</span>
+          <div className="wizard-foot-right" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            <span className="wizard-foot-steplabel" style={{ fontSize: 12.5, color: 'var(--text-3)', fontWeight: 700 }}>Step {step} of {WIZARD_STEPS.length}</span>
 
             {step === 1 && (
               <button
@@ -7198,7 +7197,7 @@ function CustomerHistoryView({ t, api }) {
               No compliance records match this search.
             </p>
           ) : (
-          <table className="kee-table">
+          <table className="kee-table history-table">
             <thead>
               <tr>
                 <th>Customer</th>
@@ -7213,22 +7212,22 @@ function CustomerHistoryView({ t, api }) {
             <tbody>
               {customers.map(c => (
                 <tr key={c.id} onClick={() => setSelectedCust(c)} style={{ cursor: 'pointer' }}>
-                  <td>
+                  <td data-label="Customer">
                     <div className="cell-primary">{c.name}</div>
                   </td>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.vehicleNumber || 'N/A'}</td>
-                  <td>
+                  <td className="cell-sub" data-label="Phone" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
+                  <td className="cell-sub" data-label="Vehicle" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.vehicleNumber || 'N/A'}</td>
+                  <td data-label="Key Code">
                     <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
                   </td>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)', maxWidth: 180 }}>
+                  <td className="cell-sub" data-label="Location" style={{ fontWeight: 700, color: 'var(--text-2)', maxWidth: 180 }}>
                     <span className="flex items-center gap-1" style={{ overflow: 'hidden' }}>
                       <MapPin style={{ width: 13, height: 13, color: 'var(--green)', flexShrink: 0 }} />
                       <span className="truncate">{c.capturedAddress || 'N/A'}</span>
                     </span>
                   </td>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
-                  <td>
+                  <td className="cell-sub" data-label="Logged" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                  <td data-label="Actions">
                     <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
                       <button onClick={(e) => { e.stopPropagation(); setSelectedCust(c); }} className="icon-btn" title="View compliance file">
                         <Eye />
@@ -8290,7 +8289,8 @@ function ShopSettingsView({ t, api }) {
                   <button
                     type="button"
                     onClick={() => setShowVerifyPass(!showVerifyPass)}
-                    style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                    className="pwd-toggle-btn"
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
                   >
                     {showVerifyPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -8396,7 +8396,8 @@ function ShopSettingsView({ t, api }) {
                     <button
                       type="button"
                       onClick={() => setOtpShowNewPass(!otpShowNewPass)}
-                      style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                      className="pwd-toggle-btn"
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
                     >
                       {otpShowNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -8413,7 +8414,8 @@ function ShopSettingsView({ t, api }) {
                     <button
                       type="button"
                       onClick={() => setOtpShowConfirmPass(!otpShowConfirmPass)}
-                      style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                      className="pwd-toggle-btn"
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
                     >
                       {otpShowConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -8570,7 +8572,7 @@ export function ReportsPortalView({ t, api }) {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 24 }}>
+      <div className="card" style={{ marginBottom: 'clamp(16px, 4vw, 24px)' }}>
         <div className="section-title" style={{ marginBottom: 18 }}>
           <h2>Report Builder</h2>
           <span className="sub">Select a report type and date range, then generate the audit view</span>

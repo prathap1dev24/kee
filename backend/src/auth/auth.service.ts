@@ -193,7 +193,12 @@ export class AuthService implements OnModuleInit {
       console.log(`[OTP dev fallback] No ${dto.method} provider configured — code for ${dto.identifier}: ${otpCode}`);
     }
 
-    return { success: true, delivered };
+    // Dev/demo convenience only: surface the code in the API response so it can be
+    // logged to the browser console. Never included when a real provider delivered it,
+    // and never included in production.
+    const devCode = (!delivered && process.env.NODE_ENV !== 'production') ? otpCode : undefined;
+
+    return { success: true, delivered, ...(devCode ? { devCode } : {}) };
   }
 
   async verifyOtp(dto: { identifier: string, method: string, purpose?: string, code: string }) {
