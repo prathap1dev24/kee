@@ -22,3 +22,31 @@ export const getAssetUrl = (url) => {
   if (!url) return url;
   return url.startsWith('/api') ? `${API_BASE}${url}` : url;
 };
+
+// Plain <a href download> only forces a download for same-origin URLs —
+// browsers ignore the `download` attribute cross-origin and just navigate
+// to it instead (which is what shows a raw JSON error page for a missing
+// file, or opens the asset in a new tab instead of saving it). Since the
+// frontend (Firebase Hosting) and backend (Render) are different origins,
+// fetch the file as a blob ourselves and trigger the download from a local
+// blob: URL instead, which is always same-origin. Also gives a clean error
+// message instead of a blank page if the file no longer exists on the
+// server (e.g. lost after a container restart wiped local disk storage).
+export const downloadAsset = async (url, filename = 'document') => {
+  if (!url) return;
+  try {
+    const response = await fetch(getAssetUrl(url));
+    if (!response.ok) throw new Error('File not found');
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    alert('This file is no longer available on the server. It may have been lost during a recent system update — please re-upload it.');
+  }
+};

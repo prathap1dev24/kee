@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from './context/AuthContext';
-import { getAssetUrl } from './apiConfig';
+import { getAssetUrl, downloadAsset } from './apiConfig';
 import PublicSite from './components/PublicSite';
 import {
   Key, Users, Shield, Radio, Activity, BarChart3, Database, LogOut, Check, X,
@@ -3271,14 +3271,14 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                       )}
                     </div>
                     {editShopPhoto && (
-                      <a
-                        href={getAssetUrl(editShopPhoto)}
-                        download="shop_photo.png"
+                      <button
+                        type="button"
+                        onClick={() => downloadAsset(editShopPhoto, 'shop_photo.png')}
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
                       >
                         Download
-                      </a>
+                      </button>
                     )}
                   </div>
 
@@ -3299,14 +3299,14 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                       )}
                     </div>
                     {editShopLicense && (
-                      <a
-                        href={getAssetUrl(editShopLicense)}
-                        download="shop_license.pdf"
+                      <button
+                        type="button"
+                        onClick={() => downloadAsset(editShopLicense, 'shop_license.pdf')}
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
                       >
                         Download
-                      </a>
+                      </button>
                     )}
                   </div>
 
@@ -3319,7 +3319,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                           {(editOwnerAadhaar.startsWith('data:application/pdf') || editOwnerAadhaar.toLowerCase().endsWith('.pdf')) ? (
                             <FileText style={{ width: 20, height: 20, color: 'var(--red)' }} />
                           ) : (
-                            <img src={editOwnerAadhaar} className="w-full h-full object-cover" alt="Aadhaar Preview" />
+                            <img src={getAssetUrl(editOwnerAadhaar)} className="w-full h-full object-cover" alt="Aadhaar Preview" />
                           )}
                         </div>
                       ) : (
@@ -3327,14 +3327,14 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                       )}
                     </div>
                     {editOwnerAadhaar && (
-                      <a
-                        href={editOwnerAadhaar}
-                        download="owner_aadhaar.pdf"
+                      <button
+                        type="button"
+                        onClick={() => downloadAsset(editOwnerAadhaar, 'owner_aadhaar.pdf')}
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
                       >
                         Download
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -3957,7 +3957,7 @@ function SuperCustomersView({ api }) {
                 {viewCust.documents.map(d => (
                   <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
                     <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
-                    <a href={getAssetUrl(d.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }} className="hover:underline">Download</a>
+                    <button type="button" onClick={() => downloadAsset(d.fileUrl, d.fileKey || 'document')} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} className="hover:underline">Download</button>
                   </div>
                 ))}
               </div>
@@ -7332,15 +7332,8 @@ function CustomerHistoryView({ t, api }) {
                       <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
                         <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
                         <button
-                          onClick={() => {
-                            const link = document.createElement('a');
-                            link.href = getAssetUrl(d.fileUrl);
-                            link.download = d.fileKey || 'document';
-                            link.target = '_blank';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }}
+                          type="button"
+                          onClick={() => downloadAsset(d.fileUrl, d.fileKey || 'document')}
                           style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }}
                           className="hover:underline"
                         >
@@ -8149,15 +8142,15 @@ function ShopSettingsView({ t, api }) {
                     <div className="flex gap-2">
                       {value ? (
                         <>
-                          <a
-                            href={getAssetUrl(value.fileUrl)}
-                            download={`${fileName}${isPdf ? '.pdf' : ''}`}
+                          <button
+                            type="button"
+                            onClick={() => downloadAsset(value.fileUrl, `${fileName}${isPdf ? '.pdf' : ''}`)}
                             className="btn btn-primary btn-sm"
                             style={{ flex: 1, fontSize: 10.5, padding: '8px 10px' }}
                           >
                             <Download style={{ width: 12, height: 12 }} />
                             <span>Download</span>
-                          </a>
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDocRemove(key)}
