@@ -482,6 +482,21 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  // Shop Admin's workspace name, shown as the header page title on every
+  // screen except Dashboard (which shows the live search box instead). Fetched
+  // once via the existing shop-settings endpoint - Super Admin has no shop, so
+  // the header falls back to the static "KEE" brand name for that role instead.
+  const [shopDisplayName, setShopDisplayName] = useState('');
+  useEffect(() => {
+    if (!isAuthenticated || user?.role === 'SUPER_ADMIN') return;
+    let cancelled = false;
+    api.getSettings()
+      .then((res) => { if (!cancelled) setShopDisplayName(res?.name || ''); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.role]);
+
   // Global header search: replaces the plain page-title label with a
   // functional search box + category filter. It's a *live* search - every
   // keystroke (and every filter-type change) instantly routes to whichever
@@ -1668,7 +1683,7 @@ export default function App() {
 
           {/* SIDEBAR NAVIGATION */}
           <aside
-            className={`sidebar w-[78%] max-w-[260px] md:w-64 flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-50 md:z-auto transition-transform duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+            className={`sidebar w-[82%] max-w-[320px] md:w-64 flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-50 md:z-auto transition-transform duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
             style={{ overflowY: 'auto' }}
           >
             <div className="brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1836,7 +1851,7 @@ export default function App() {
               )}
             </nav>
 
-            <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px' }}>
+            <div className="sidebar-footer" style={{ borderTop: '1px solid var(--border)', padding: '16px 20px' }}>
               <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
                 <span className="avatar">{(user.name || 'U').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()}</span>
                 <div style={{ minWidth: 0 }}>
@@ -1856,7 +1871,7 @@ export default function App() {
           </aside>
 
           {/* MAIN CONTENT DISPLAY */}
-          <main className="flex-1 p-4 pb-24 md:p-6 overflow-y-auto overflow-x-hidden space-y-6" style={{ minWidth: 0 }}>
+          <main className="app-main flex-1 p-4 pb-24 md:p-6 overflow-y-auto overflow-x-hidden space-y-6" style={{ minWidth: 0 }}>
 
             {/* Top Workspace Header Bar */}
             <header className="app-topbar flex justify-between items-center mb-6 relative z-50" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 20px' }}>
@@ -1872,7 +1887,7 @@ export default function App() {
                     too was causing the same characters to visibly appear in
                     two search fields at once. Hiding it everywhere except
                     Dashboard keeps every page's search 100% self-contained. */}
-                {activeTab === 'dashboard' && (
+                {activeTab === 'dashboard' ? (
                   <div className="global-search-form" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <button
@@ -1924,6 +1939,12 @@ export default function App() {
                         placeholder={`Search by ${globalSearchType === 'all' ? 'anything' : globalSearchType === 'productType' ? 'product type' : globalSearchType}\u2026`}
                       />
                     </div>
+                  </div>
+                ) : (
+                  // No search panel on this screen - fill the otherwise-empty
+                  // header center with workspace context instead of blank space.
+                  <div className="header-page-title truncate">
+                    {user.role === 'SUPER_ADMIN' ? 'KEE' : (shopDisplayName || user.name)}
                   </div>
                 )}
               </div>
@@ -2059,8 +2080,14 @@ export default function App() {
               <span>Language</span>
             </button>
             <button
-              className={`mbn-item ${activeTab === 'customer-care' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('customer-care'); setMobileNavOpen(false); }}
+              className={`mbn-item ${(user.role === 'SUPER_ADMIN' ? activeTab === 'support-config' : activeTab === 'customer-care') ? 'active' : ''}`}
+              onClick={() => {
+                // Role-based destination: Super Admin manages the global
+                // support config (WhatsApp number + training videos), while
+                // Shop Admin only views the already-configured contact info.
+                setActiveTab(user.role === 'SUPER_ADMIN' ? 'support-config' : 'customer-care');
+                setMobileNavOpen(false);
+              }}
             >
               <LifeBuoy />
               <span>Customer Service</span>
@@ -7714,7 +7741,7 @@ export function SupportConfigView({ t, api }) {
           </div>
 
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 6 }}>
-            <div className="section-title">
+            <div className="section-title" style={{ marginBottom: 24 }}>
               <div>
                 <h2 style={{ fontSize: 15 }}>Support & Training Videos</h2>
                 <span className="sub">{videos.length} video{videos.length === 1 ? '' : 's'} configured</span>
@@ -7733,7 +7760,7 @@ export function SupportConfigView({ t, api }) {
                 No videos configured. Click &ldquo;Add Video&rdquo; to add locksmith training links.
               </p>
             ) : (
-              <div className="space-y-3" style={{ maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+              <div className="space-y-3" style={{ maxHeight: 380, overflowY: 'auto', paddingRight: 4, paddingTop: 2 }}>
                 {videos.map((vid, idx) => (
                   <div key={idx} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 14, padding: 16, position: 'relative' }}>
                     <button
@@ -7783,7 +7810,7 @@ export function SupportConfigView({ t, api }) {
             )}
           </div>
 
-          <div className="flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 20 }}>
+          <div className="form-action-bar flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 20, marginBottom: 8 }}>
             <button type="submit" disabled={saving} className="btn btn-primary">
               {saving ? <RefreshCw className="animate-spin" /> : <Check />}
               <span>Save Configuration</span>
