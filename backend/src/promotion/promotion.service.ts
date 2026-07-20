@@ -51,6 +51,7 @@ export class PromotionService {
         validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
         linkedPromotionId: dto.linkedPromotionId,
         productType: dto.productType,
+        phone: dto.phone,
         shopId,
         createdById: userId,
       },

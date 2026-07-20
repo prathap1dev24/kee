@@ -4981,7 +4981,11 @@ function AdsManagementView({ api }) {
 // ============================================================================
 // OLX-style inventory categories. Freeform on the backend (productType is a
 // plain string, not an enum) so this list can grow without a migration.
-const PRODUCT_TYPES = ['Key Blanks', 'Duplicate Keys', 'Machines', 'Accessories', 'Other'];
+// This is now the ONLY type classification a listing has - the old separate
+// "Listing Type" (Inventory Product / Advertisement / Offer/Discount) picker
+// has been removed from the create/edit form; every new listing is created
+// as a plain PRODUCT and categorized purely via this list.
+const PRODUCT_TYPES = ['Key Cutting Machines', 'Used Machines', 'ECM Service', 'Meter Service', 'Scanning Service'];
 
 function PromotionsView({ api, user, searchDispatch }) {
   const isSuperAdmin = user.role === 'SUPER_ADMIN';
@@ -5059,6 +5063,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
   const [imageUrl, setImageUrl] = useState('');
   const [price, setPrice] = useState('');
   const [productType, setProductType] = useState(PRODUCT_TYPES[0]);
+  const [phone, setPhone] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [linkedPromotionId, setLinkedPromotionId] = useState('');
@@ -5107,6 +5112,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
     setImageUrl('');
     setPrice('');
     setProductType(PRODUCT_TYPES[0]);
+    setPhone('');
     setDiscountPercentage('');
     setValidUntil('');
     setLinkedPromotionId('');
@@ -5123,6 +5129,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
     setImageUrl(promo.imageUrl || '');
     setPrice(promo.price ?? '');
     setProductType(promo.productType || PRODUCT_TYPES[0]);
+    setPhone(promo.phone || '');
     setDiscountPercentage(promo.discountPercentage ?? '');
     setValidUntil(promo.validUntil ? promo.validUntil.slice(0, 10) : '');
     setLinkedPromotionId(promo.linkedPromotionId || '');
@@ -5135,12 +5142,20 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
     setErrorMsg('');
     try {
       const dto = {
+        // The Listing Type picker (Inventory Product / Advertisement /
+        // Offer-Discount) has been removed from the UI - every new listing
+        // is always a plain PRODUCT. `type` is only ever something other
+        // than 'PRODUCT' here when editing a pre-existing legacy AD/OFFER
+        // listing (handleEditClick loads its original type), so this line
+        // preserves that legacy record's type instead of silently
+        // converting it.
         type,
         title,
         description: description || undefined,
         imageUrl: imageUrl || undefined,
         price: price === '' ? undefined : Number(price),
-        productType: type === 'PRODUCT' ? (productType || undefined) : undefined,
+        productType: productType || undefined,
+        phone: phone || undefined,
         discountPercentage: type === 'OFFER' && discountPercentage !== '' ? Number(discountPercentage) : undefined,
         validUntil: type === 'OFFER' && validUntil ? new Date(validUntil).toISOString() : undefined,
         linkedPromotionId: type === 'OFFER' && linkedPromotionId ? linkedPromotionId : undefined,
@@ -5328,6 +5343,17 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                     </div>
                   </div>
 
+                  {promo.phone && (
+                    // Plain tel: link - opens the system dialer automatically inside
+                    // the native Android app (Capacitor's default WebViewClient
+                    // launches an external ACTION_VIEW intent for non-http schemes),
+                    // and falls back to the browser's normal tel: handling on web.
+                    <a href={`tel:${promo.phone}`} className="btn btn-primary btn-sm btn-block">
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>Call: {promo.phone}</span>
+                    </a>
+                  )}
+
                   <div className="cell-sub" style={{ fontSize: 11.5 }}>
                     <Calendar className="h-3 w-3" style={{ display: 'inline', marginRight: 4, verticalAlign: '-2px' }} />
                     {new Date(promo.createdAt).toLocaleDateString()}
@@ -5381,15 +5407,6 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
 
             <form onSubmit={handleSubmit}>
               <div className="field">
-                <label>Listing Type</label>
-                <select className="sel" value={type} onChange={(e) => setType(e.target.value)}>
-                  <option value="PRODUCT">Inventory Product</option>
-                  <option value="AD">Advertisement</option>
-                  <option value="OFFER">Offer / Discount</option>
-                </select>
-              </div>
-
-              <div className="field">
                 <label>Name</label>
                 <div className="input-wrap">
                   <Tag />
@@ -5400,16 +5417,14 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                 </div>
               </div>
 
-              {type === 'PRODUCT' && (
-                <div className="field">
-                  <label>Product Type</label>
-                  <select className="sel" value={productType} onChange={(e) => setProductType(e.target.value)}>
-                    {PRODUCT_TYPES.map(pt => (
-                      <option key={pt} value={pt}>{pt}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="field">
+                <label>Product Type</label>
+                <select className="sel" value={productType} onChange={(e) => setProductType(e.target.value)}>
+                  {PRODUCT_TYPES.map(pt => (
+                    <option key={pt} value={pt}>{pt}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="field">
                 <label>Description (optional)</label>
@@ -5467,6 +5482,18 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                     placeholder="Leave blank if not applicable"
                   />
                 </div>
+              </div>
+
+              <div className="field">
+                <label>Phone Number</label>
+                <div className="input-wrap">
+                  <Phone />
+                  <input
+                    type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. 9876543210"
+                  />
+                </div>
+                <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Shown on the listing card as a tap-to-call button for buyers.</span>
               </div>
 
               {type === 'OFFER' && (

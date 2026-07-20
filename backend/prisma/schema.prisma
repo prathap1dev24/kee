@@ -257,9 +257,18 @@ model Promotion {
   price       Float?
 
   // Inventory rework: freeform product category shown on the OLX-style
-  // inventory grid (e.g. "Key Blanks", "Duplicate Keys", "Machines",
-  // "Accessories"). Nullable/additive so existing rows are unaffected.
+  // inventory grid. Nullable/additive so existing rows are unaffected. As of
+  // the "Product Type" rework, this is the ONLY category classification a
+  // listing has - the frontend's old separate AD/OFFER "Listing Type" picker
+  // was removed, and this field is now driven by a fixed dropdown (Key
+  // Cutting Machines, Used Machines, ECM Service, Meter Service, Scanning
+  // Service) instead of the earlier free-text inventory categories.
   productType String?
+
+  // Seller contact number shown on the listing card as a tap-to-call button.
+  // Nullable so pre-existing rows created before this field was added remain
+  // valid; the create form requires it for every new listing going forward.
+  phone String?
 
   // Only meaningful for type === OFFER: a percentage discount and/or an expiry
   // (validUntil null = no expiry). The cross-shop feed excludes expired offers

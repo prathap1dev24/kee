@@ -38,11 +38,19 @@ export class CreatePromotionDto {
   @IsOptional()
   linkedPromotionId?: string;
 
-  // Freeform inventory category shown on the OLX-style product grid
-  // (e.g. "Key Blanks", "Duplicate Keys", "Machines", "Accessories").
+  // Inventory category shown on the OLX-style product grid. As of the
+  // "Product Type" rework this is the sole classification a listing has -
+  // the frontend's Listing Type (AD/OFFER) picker was removed, so every new
+  // listing is created with type === PRODUCT and categorized only here.
   @IsString()
   @IsOptional()
   productType?: string;
+
+  // Seller contact number, required for every new listing - shown on the
+  // product card as a tap-to-call button.
+  @IsString()
+  @IsNotEmpty({ message: 'Phone number is required' })
+  phone: string;
 }
 
 export class UpdatePromotionDto {
@@ -84,4 +92,8 @@ export class UpdatePromotionDto {
   @IsString()
   @IsOptional()
   productType?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
 }
