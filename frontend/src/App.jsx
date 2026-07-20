@@ -7,7 +7,7 @@ import {
   Key, Users, Shield, Radio, Activity, BarChart3, Database, LogOut, Check, X,
   Plus, Settings, FileText, Search, UserCheck, MapPin, Camera, AlertTriangle,
   RotateCcw, Trash, RefreshCw, Layers, Edit, ExternalLink, Sliders, DollarSign,
-  Bell, ShoppingBag, Eye, EyeOff, Truck, CheckCircle2, ChevronRight, Info,
+  Bell, Eye, EyeOff, Truck, CheckCircle2, ChevronRight, Info,
   CreditCard, QrCode, Wallet, Lock, ShieldCheck, Upload, Mail, Phone,
   ArrowRight, ArrowLeft, Building2, Calendar,
   Store, TrendingUp, TrendingDown, UserPlus, Clock, IndianRupee, BadgeCheck,
@@ -15,7 +15,7 @@ import {
   User, Hash, UploadCloud, PenLine, Crosshair, FileCheck, Navigation, KeyRound, Car,
   Tag, Package, Boxes, Percent, Image as ImageIcon, Megaphone, BadgePercent,
   Receipt, CalendarRange, Banknote, PlayCircle, MessageCircle, LifeBuoy,
-  Download, Fingerprint, Palette, Menu
+  Download, Fingerprint, Palette, Menu, Home, Languages
 } from 'lucide-react';
 
 export function cleanGoogleImageUrl(url) {
@@ -323,7 +323,6 @@ const LANGUAGES = {
     shops: 'Shop Management',
     customers: 'Customer Registry',
     keys: 'Master Catalogue',
-    inventory: 'Store Inventory',
     pricing: 'Pricing & Offers',
     revenue: 'Revenue Log',
     searchKeys: 'Blank Key Search',
@@ -349,7 +348,6 @@ const LANGUAGES = {
     shops: 'दुकान प्रबंधन',
     customers: 'ग्राहक रजिस्ट्री',
     keys: 'मास्टर सूची',
-    inventory: 'स्टोर इन्वेंटरी',
     pricing: 'मूल्य निर्धारण और ऑफ़र',
     revenue: 'राजस्व लॉग',
     searchKeys: 'खाली कुंजी खोज',
@@ -375,7 +373,6 @@ const LANGUAGES = {
     shops: 'கடை மேலாண்மை',
     customers: 'வாடிக்கையாளர் பதிவேடு',
     keys: 'மாஸ்டர் பட்டியல்',
-    inventory: 'சரக்கு இருப்பு',
     pricing: 'விலை மற்றும் சலுகைகள்',
     revenue: 'வருவாய் பதிவு',
     searchKeys: 'வெற்று சாவி தேடல்',
@@ -401,7 +398,6 @@ const LANGUAGES = {
     shops: 'షాప్ మేనేజ్‌మెంట్',
     customers: 'కస్టమర్ రిజిస్ట్రీ',
     keys: 'మాస్టர் కేటలాగ్',
-    inventory: 'స్టోర్ ఇన్వెంటరీ',
     pricing: 'ధరలు & ఆఫర్లు',
     revenue: 'ఆదాయ లాగ్',
     searchKeys: 'కీ శోధన',
@@ -427,7 +423,6 @@ const LANGUAGES = {
     shops: 'ಅಂಗಡಿ ನಿರ್ವಹಣೆ',
     customers: 'ಗ್ರಾಹಕರ ನೋಂದಣಿ',
     keys: 'ಮಾಸ್ಟರ್ ಕ್ಯಾಟಲಾಗ್',
-    inventory: 'ದಾಸ್ತಾನು',
     pricing: 'ಬೆಲೆ ಮತ್ತು ಕೊಡುಗೆಗಳು',
     revenue: 'ಆದಾಯ ದಾಖಲೆ',
     searchKeys: 'ಖಾಲಿ ಕೀಲಿ ಹುಡುಕಾಟ',
@@ -453,7 +448,6 @@ const LANGUAGES = {
     shops: 'ഷോപ്പ് മാനേജ്‌മെന്റ്',
     customers: 'കസ്റ്റമർ രജിസ്ട്രി',
     keys: 'മാസ്റ്റർ കാറ്റലോഗ്',
-    inventory: 'സ്റ്റോർ ഇൻവെന്ററി',
     pricing: 'വിലയും ഓഫറുകളും',
     revenue: 'വരുമാന ലോഗ്',
     searchKeys: 'ബ്ലാങ്ക് കീ സെർച്ച്',
@@ -469,22 +463,85 @@ const LANGUAGES = {
   }
 };
 
+// Global header search "search by" categories. Rendered via a custom
+// icon-based dropdown (not a native <select>) so the closed/trigger state
+// can collapse to an icon-only button on mobile while still showing a full
+// icon+label list in the open dropdown on every screen size.
+const SEARCH_TYPE_OPTIONS = [
+  { value: 'all', label: 'Anything', icon: Search },
+  { value: 'customer', label: 'Customer', icon: Users },
+  { value: 'productType', label: 'Product Type', icon: Tag },
+  { value: 'location', label: 'Location', icon: MapPin },
+  { value: 'key', label: 'Key', icon: KeyRound },
+];
+
 export default function App() {
   const { user, isAuthenticated, loading, login, logout, api } = useAuth();
   const [lang, setLang] = useState(localStorage.getItem('kee_lang') || 'en');
   const t = (key) => LANGUAGES[lang]?.[key] || LANGUAGES['en']?.[key] || key;
 
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Global header search: replaces the plain page-title label with a
+  // functional search box + category filter. It's a *live* search - every
+  // keystroke (and every filter-type change) instantly routes to whichever
+  // existing screen owns that kind of data and hands it the query via
+  // `searchDispatch` (a small {query, type, nonce} object - the nonce lets
+  // the exact same query re-trigger the receiving screen's own search effect
+  // even when the string itself didn't change, e.g. only the type changed).
+  // No Enter key / submit button is required.
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchType, setGlobalSearchType] = useState('all');
+  const [searchDispatch, setSearchDispatch] = useState(null);
+  const [searchTypeMenuOpen, setSearchTypeMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // The global search box only exists on the Dashboard (see the header
+    // JSX below), so this is a one-shot "jump to the right screen" action,
+    // not a live sync with that screen's own search field. As soon as a
+    // query is typed we hand it off via `searchDispatch` and clear our own
+    // copy - the destination screen takes over with its own, fully
+    // independent search state from that point on, so nothing typed there
+    // (or on any other page) ever feeds back into this box or any other
+    // page's search.
+    if (activeTab !== 'dashboard') return;
+    const query = globalSearchQuery.trim();
+    if (!query) return;
+
+    // "Anything" (the default filter) has no single, unambiguous destination
+    // screen, so it must never auto-navigate away from the Dashboard - it
+    // stays a purely local, in-page search. Only an explicitly-picked
+    // category (Customer / Product Type / Location / Key) is a deliberate
+    // enough signal to jump to that category's own screen.
+    if (globalSearchType === 'all') return;
+
+    const isSuper = user?.role === 'SUPER_ADMIN';
+    let targetTab;
+    if (globalSearchType === 'customer') {
+      targetTab = isSuper ? 'super-customers' : 'history';
+    } else if (globalSearchType === 'key') {
+      targetTab = isSuper ? 'keys' : 'search-keys';
+    } else {
+      // 'productType' | 'location' - both live in the cross-shop Inventory feed.
+      targetTab = 'promotions';
+    }
+
+    setSearchDispatch({ query, type: globalSearchType, nonce: Date.now() });
+    setActiveTab(targetTab);
+    setGlobalSearchQuery('');
+    setSearchTypeMenuOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSearchQuery, globalSearchType, activeTab]);
+
   const PAGE_TITLES = {
     dashboard: t('dashboard'),
     shops: t('shops'),
     'super-customers': t('customers'),
     keys: t('keys'),
-    inventory: t('inventory'),
     'pricing-offers': t('pricing'),
     revenue: t('revenue'),
     'support-config': 'Support Config',
-    promotions: 'Promotions',
+    promotions: 'Inventory',
     'search-keys': t('searchKeys'),
     register: t('register'),
     history: t('history'),
@@ -492,6 +549,13 @@ export default function App() {
     'customer-care': 'Customer Care',
     settings: t('settings'),
   };
+
+  // The header no longer shows the page title as text (replaced by the global
+  // search panel below), but the browser tab title still reflects it.
+  useEffect(() => {
+    document.title = PAGE_TITLES[activeTab] ? `${PAGE_TITLES[activeTab]} | KEE` : 'KEE';
+  }, [activeTab, lang]);
+
   // Public (unauthenticated) marketing site page: home | search | about | contact | login.
   // Anonymous visitors land on 'home'; clicking "Login" (nav or hero CTA) switches this
   // to 'login', which renders the existing, unmodified login-shell UI below.
@@ -505,6 +569,28 @@ export default function App() {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [autoOpenShopModal, setAutoOpenShopModal] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [showLangDialog, setShowLangDialog] = useState(false);
+  const langDialogCardRef = useRef(null);
+
+  // Auto-close the language dialog the instant the user interacts with
+  // anything outside it - another sidebar link, a header/mobile-nav button,
+  // etc. A document-level listener (rather than relying solely on the
+  // dialog's own backdrop) is used because the mobile bottom-nav bar sits
+  // at a higher z-index (60) than the dialog backdrop (50), so clicks on it
+  // land directly on the nav button instead of the backdrop - but the click
+  // still bubbles up to `document`, so this reliably catches it regardless
+  // of stacking order, letting the underlying button's own onClick (e.g.
+  // switching tabs) fire normally in the same click.
+  useEffect(() => {
+    if (!showLangDialog) return;
+    const handleOutsideClick = (e) => {
+      if (langDialogCardRef.current && !langDialogCardRef.current.contains(e.target)) {
+        setShowLangDialog(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showLangDialog]);
 
   // Forgot password flow states
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -1657,13 +1743,6 @@ export default function App() {
                     <Database />
                     <span>{t('keys')}</span>
                   </button>
-                  <button
-                    onClick={() => setActiveTab('inventory')}
-                    className={`side-link ${activeTab === 'inventory' ? 'active' : ''}`}
-                  >
-                    <ShoppingBag />
-                    <span>{t('inventory')}</span>
-                  </button>
 
                   <div className="side-section-label">Business</div>
                   <button
@@ -1685,7 +1764,7 @@ export default function App() {
                     className={`side-link ${activeTab === 'promotions' ? 'active' : ''}`}
                   >
                     <Megaphone />
-                    <span>Promotions</span>
+                    <span>Inventory</span>
                   </button>
 
                   <div className="side-section-label">Support</div>
@@ -1735,7 +1814,7 @@ export default function App() {
                     className={`side-link ${activeTab === 'promotions' ? 'active' : ''}`}
                   >
                     <Megaphone />
-                    <span>Promotions</span>
+                    <span>Inventory</span>
                   </button>
 
                   <div className="side-section-label">Settings</div>
@@ -1777,21 +1856,79 @@ export default function App() {
           </aside>
 
           {/* MAIN CONTENT DISPLAY */}
-          <main className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden space-y-6" style={{ minWidth: 0 }}>
+          <main className="flex-1 p-4 pb-24 md:p-6 overflow-y-auto overflow-x-hidden space-y-6" style={{ minWidth: 0 }}>
 
             {/* Top Workspace Header Bar */}
-            <header className="flex justify-between items-center mb-6 relative z-50" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 20px' }}>
-              <div className="flex items-center gap-3" style={{ minWidth: 0 }}>
+            <header className="app-topbar flex justify-between items-center mb-6 relative z-50" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 20px' }}>
+              <div className="flex items-center gap-2 header-search-wrap" style={{ minWidth: 0, flex: 1 }}>
                 <button className="icon-btn md:hidden" onClick={() => setMobileNavOpen(v => !v)} style={{ flexShrink: 0 }}>
                   <Menu />
                 </button>
-                <div className="eyebrow truncate" style={{ marginBottom: 0 }}>
-                  <Activity />
-                  {PAGE_TITLES[activeTab] || t('dashboard')}
-                </div>
+                {/* The global "jump to" search only makes sense on the
+                    Dashboard: it exists to launch you into the right screen
+                    (Customers / Keys / Inventory) for a query typed from the
+                    landing page. Every other screen already has its own,
+                    fully independent search box, so showing this one there
+                    too was causing the same characters to visibly appear in
+                    two search fields at once. Hiding it everywhere except
+                    Dashboard keeps every page's search 100% self-contained. */}
+                {activeTab === 'dashboard' && (
+                  <div className="global-search-form" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setSearchTypeMenuOpen(v => !v)}
+                        className="search-type-trigger"
+                        title="Search by"
+                      >
+                        {(() => {
+                          const active = SEARCH_TYPE_OPTIONS.find(o => o.value === globalSearchType) || SEARCH_TYPE_OPTIONS[0];
+                          const ActiveIcon = active.icon;
+                          return (
+                            <>
+                              <ActiveIcon className="h-3.5 w-3.5" />
+                              <span className="search-type-label">{active.label}</span>
+                            </>
+                          );
+                        })()}
+                      </button>
+                      {searchTypeMenuOpen && (
+                        <>
+                          <div className="search-type-backdrop" onClick={() => setSearchTypeMenuOpen(false)} />
+                          <div className="search-type-menu card animate-fade-in">
+                            {SEARCH_TYPE_OPTIONS.map(opt => {
+                              const OptIcon = opt.icon;
+                              return (
+                                <button
+                                  type="button"
+                                  key={opt.value}
+                                  className={`search-type-item ${globalSearchType === opt.value ? 'active' : ''}`}
+                                  onClick={() => { setGlobalSearchType(opt.value); setSearchTypeMenuOpen(false); }}
+                                >
+                                  <OptIcon className="h-3.5 w-3.5" />
+                                  <span>{opt.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="input-wrap global-search-input" style={{ flex: 1, minWidth: 0, margin: 0 }}>
+                      <Search />
+                      <input
+                        type="text"
+                        value={globalSearchQuery}
+                        onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                        onFocus={() => setSearchTypeMenuOpen(false)}
+                        placeholder={`Search by ${globalSearchType === 'all' ? 'anything' : globalSearchType === 'productType' ? 'product type' : globalSearchType}\u2026`}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-3 relative">
+              <div className="flex items-center gap-3 relative app-topbar-actions">
                 {/* Notification Bell */}
                 <button
                   onClick={() => setShowNotifDropdown(!showNotifDropdown)}
@@ -1884,20 +2021,100 @@ export default function App() {
 
             {activeTab === 'dashboard' && <DashboardView t={t} setActiveTab={setActiveTab} setAutoOpenShopModal={setAutoOpenShopModal} />}
             {activeTab === 'shops' && <ShopsManagementView t={t} api={api} initiallyOpenAddModal={autoOpenShopModal} onCloseInitiallyOpen={() => setAutoOpenShopModal(false)} />}
-            {activeTab === 'super-customers' && <SuperCustomersView t={t} api={api} />}
-            {activeTab === 'keys' && <KeysCatalogView t={t} api={api} />}
-            {activeTab === 'inventory' && <StoreInventoryView t={t} api={api} />}
+            {activeTab === 'super-customers' && <SuperCustomersView t={t} api={api} searchDispatch={activeTab === 'super-customers' ? searchDispatch : null} />}
+            {activeTab === 'keys' && <KeysCatalogView t={t} api={api} searchDispatch={activeTab === 'keys' ? searchDispatch : null} />}
             {activeTab === 'pricing-offers' && <PricingOffersView t={t} api={api} />}
             {activeTab === 'revenue' && <RevenueManagementView t={t} api={api} />}
-            {activeTab === 'promotions' && <PromotionsView t={t} api={api} user={user} />}
-            {activeTab === 'search-keys' && <KeysSearchView t={t} api={api} />}
+            {activeTab === 'promotions' && <PromotionsView t={t} api={api} user={user} searchDispatch={activeTab === 'promotions' ? searchDispatch : null} />}
+            {activeTab === 'search-keys' && <KeysSearchView t={t} api={api} searchDispatch={activeTab === 'search-keys' ? searchDispatch : null} />}
             {activeTab === 'register' && <CustomerRegistrationWizard t={t} api={api} />}
-            {activeTab === 'history' && <CustomerHistoryView t={t} api={api} />}
+            {activeTab === 'history' && <CustomerHistoryView t={t} api={api} searchDispatch={activeTab === 'history' ? searchDispatch : null} />}
             {activeTab === 'reports' && <ReportsPortalView t={t} api={api} />}
             {activeTab === 'customer-care' && <CustomerCareView t={t} api={api} />}
             {activeTab === 'support-config' && <SupportConfigView t={t} api={api} />}
             {activeTab === 'settings' && <ShopSettingsView t={t} api={api} />}
           </main>
+
+          {/* Mobile Bottom Navigation Bar (mobile only) */}
+          <nav className="mobile-bottom-nav md:hidden">
+            <button
+              className={`mbn-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }}
+            >
+              <Home />
+              <span>Dashboard</span>
+            </button>
+            <button
+              className={`mbn-item ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('settings'); setMobileNavOpen(false); }}
+            >
+              <User />
+              <span>Account</span>
+            </button>
+            <button
+              className="mbn-item"
+              onClick={() => setShowLangDialog(true)}
+            >
+              <Languages />
+              <span>Language</span>
+            </button>
+            <button
+              className={`mbn-item ${activeTab === 'customer-care' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('customer-care'); setMobileNavOpen(false); }}
+            >
+              <LifeBuoy />
+              <span>Customer Service</span>
+            </button>
+          </nav>
+
+          {/* Language selection dialog (center-screen modal) */}
+          {showLangDialog && createPortal(
+            <div
+              className="fixed inset-0 z-50 overflow-y-auto flex justify-center items-center p-4"
+              style={{ background: 'rgba(5,4,3,0.72)' }}
+              onClick={() => setShowLangDialog(false)}
+            >
+              <div
+                ref={langDialogCardRef}
+                className="card animate-fade-in"
+                style={{ width: '100%', maxWidth: 340, padding: 24, position: 'relative' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setShowLangDialog(false)}
+                  className="icon-btn"
+                  style={{ position: 'absolute', top: 16, right: 16 }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="flex flex-col items-center mb-5" style={{ textAlign: 'center' }}>
+                  <div className="icon-badge solid" style={{ marginBottom: 10 }}><Languages /></div>
+                  <h2 style={{ fontSize: 17 }}>Choose Language</h2>
+                  <p style={{ color: 'var(--text-3)', fontSize: 12, fontWeight: 600, marginTop: 4 }}>Select your preferred language for the app</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { code: 'en', label: 'English' },
+                    { code: 'hi', label: 'Hindi (हिन्दी)' },
+                    { code: 'ta', label: 'Tamil (தமிழ்)' },
+                    { code: 'te', label: 'Telugu (తెలుగు)' },
+                    { code: 'kn', label: 'Kannada (ಕನ್ನಡ)' },
+                    { code: 'ml', label: 'Malayalam (മലയാളം)' },
+                  ].map(l => (
+                    <button
+                      key={l.code}
+                      onClick={() => { setLang(l.code); localStorage.setItem('kee_lang', l.code); setShowLangDialog(false); }}
+                      className={`lang-option-btn ${lang === l.code ? 'active' : ''}`}
+                    >
+                      <span>{l.label}</span>
+                      {lang === l.code && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
       )}
     </>
@@ -1913,22 +2130,6 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
   const [loading, setLoading] = useState(true);
   const [activeDetail, setActiveDetail] = useState(null); // Interactive details drawer
   const [activePopupAd, setActivePopupAd] = useState(null);
-  const [discountedProducts, setDiscountedProducts] = useState([]);
-
-  useEffect(() => {
-    if (user.role === 'SHOP_ADMIN') {
-      fetchOfferProducts();
-    }
-  }, [user]);
-
-  const fetchOfferProducts = async () => {
-    try {
-      const res = await api.getProducts();
-      setDiscountedProducts(res.filter(p => p.discountPercentage > 0 && p.status === 'ACTIVE'));
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   useEffect(() => {
     if (activePopupAd) {
@@ -2230,7 +2431,7 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
             <p>{data.shop ? data.shop.name : `${t('shopTerminal')} Workspace`} — compliance &amp; inventory terminal</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="dash-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={fetchDashboardData} className="icon-btn" title="Refresh"><RefreshCw /></button>
           <button onClick={() => setActiveTab('register')} className="btn btn-primary">
             <UserPlus />
@@ -2347,8 +2548,8 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
         <button className="qa-btn" onClick={() => setActiveTab('promotions')}>
           <div className="icon-badge"><Megaphone /></div>
           <div>
-            <span>Promotions</span>
-            <small>Browse products, ads &amp; offers</small>
+            <span>Inventory</span>
+            <small>Browse inventory products</small>
           </div>
         </button>
       </div>
@@ -2493,34 +2694,6 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
                 Special promotion from KEE Headquarters for duplicate key shop workspaces. Upgrade inventory stock or log compliance checks to qualify.
               </p>
 
-              {discountedProducts.length > 0 && (
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 800, color: 'var(--green)' }}>Active Offers</span>
-                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                    {discountedProducts.map(p => (
-                      <div
-                        key={p.id}
-                        onClick={() => {
-                          sessionStorage.setItem(`dismissed_ad_${activePopupAd.id}`, 'true');
-                          setActivePopupAd(null);
-                          setActiveTab('promotions');
-                        }}
-                        style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 12, padding: 8, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, width: 210, cursor: 'pointer' }}
-                      >
-                        <img src={p.imageUrl} alt={p.name} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <p style={{ fontWeight: 700, fontSize: 11, color: 'var(--text-0)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                            <span style={{ fontSize: 10, color: 'var(--text-3)', textDecoration: 'line-through' }}>Rs. {p.price.toFixed(2)}</span>
-                            <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 800 }}>Rs. {(p.offerPrice || p.price).toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', gap: 10 }}>
                 <button
                   onClick={() => {
@@ -2558,6 +2731,9 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  // Client-side live search - the full shop list is already fetched in one
+  // call, so filtering happens instantly on every keystroke with no round-trip.
+  const [shopSearchQuery, setShopSearchQuery] = useState('');
 
   useEffect(() => {
     if (initiallyOpenAddModal) {
@@ -2897,24 +3073,52 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
         </button>
       </div>
 
-      {loading ? (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 260 }}>
-          <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading shop registry…</span>
-        </div>
-      ) : (
-        <div className="card table-card">
-          <div className="table-head">
-            <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 17 }}>
-              All Shops <span style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 13 }}>({shops.length})</span>
-            </h2>
+      {/* Search box stays mounted regardless of loading/results state so it
+          never loses focus while typing. Filtering is instant/client-side
+          (partial, case-insensitive match) since the whole shop list is
+          already in memory. */}
+      <div className="card table-card">
+        <div className="table-head">
+          <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 17 }}>
+            All Shops <span style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 13 }}>({shops.length})</span>
+          </h2>
+          <div className="search-box">
+            <Search />
+            <input
+              type="text" value={shopSearchQuery} onChange={(e) => setShopSearchQuery(e.target.value)}
+              placeholder="Search by shop name, admin name, or email&hellip;"
+            />
           </div>
+        </div>
 
-          {shops.length === 0 ? (
-            <p style={{ padding: 24, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
-              No shop workspaces provisioned yet. Use "Provision New Shop" to onboard your first tenant.
-            </p>
-          ) : (
+        {(() => {
+          const q = shopSearchQuery.trim().toLowerCase();
+          const filteredShops = !q ? shops : shops.filter(s =>
+            (s.name || '').toLowerCase().includes(q) ||
+            (s.users?.[0]?.name || '').toLowerCase().includes(q) ||
+            (s.users?.[0]?.email || '').toLowerCase().includes(q)
+          );
+
+          if (loading) {
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 200 }}>
+                <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading shop registry…</span>
+              </div>
+            );
+          }
+
+          if (filteredShops.length === 0) {
+            return (
+              <p style={{ padding: 24, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
+                {shops.length === 0
+                  ? 'No shop workspaces provisioned yet. Use "Provision New Shop" to onboard your first tenant.'
+                  : 'No shop workspaces match this search.'}
+              </p>
+            );
+          }
+
+          return (
           <table className="kee-table">
             <thead>
               <tr>
@@ -2928,7 +3132,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
               </tr>
             </thead>
             <tbody>
-              {shops.map(s => (
+              {filteredShops.map(s => (
                 <tr key={s.id}>
                   <td>
                     <div className="cell-primary">{s.name}</div>
@@ -2983,9 +3187,9 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
               ))}
             </tbody>
           </table>
-          )}
-        </div>
-      )}
+          );
+        })()}
+      </div>
 
       {showAddModal && createPortal(
         <div className="fixed inset-0 z-50 overflow-y-auto flex justify-center p-4 md:p-10" style={{ background: 'rgba(5,4,3,0.82)' }}>
@@ -3626,10 +3830,18 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
 // ============================================================================
 // COMPONENT 3: SUPER CUSTOMER SUPERVISION VIEW (SUPER ADMIN ONLY)
 // ============================================================================
-function SuperCustomersView({ api }) {
+function SuperCustomersView({ api, searchDispatch }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+
+  // Picks up a query dispatched from the global header search panel
+  // (filter = "Customer"). The nonce lets the same text be re-submitted.
+  useEffect(() => {
+    if (searchDispatch && searchDispatch.type === 'customer') {
+      setSearch(searchDispatch.query);
+    }
+  }, [searchDispatch?.nonce]);
   const [selectedCust, setSelectedCust] = useState(null);
   const [viewCust, setViewCust] = useState(null);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
@@ -3705,74 +3917,76 @@ function SuperCustomersView({ api }) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 260 }}>
-          <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading customer registry&hellip;</span>
-        </div>
-      ) : (
-        <div className="card table-card">
-          <div className="table-head">
-            <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 17 }}>
-              All Customers <span style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 13 }}>({customers.length})</span>
-            </h2>
-            <div className="search-box">
-              <Search />
-              <input
-                type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, phone, or key code&hellip;"
-              />
-            </div>
+      {/* The search box lives outside the loading/results swap below so it
+          never unmounts while typing - every keystroke sets `search`, which
+          re-triggers the fetch and flips `loading` briefly, but the input
+          itself stays mounted throughout and keeps focus the whole time. */}
+      <div className="card table-card">
+        <div className="table-head">
+          <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 17 }}>
+            All Customers <span style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 13 }}>({customers.length})</span>
+          </h2>
+          <div className="search-box">
+            <Search />
+            <input
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, phone, or key code&hellip;"
+            />
           </div>
-
-          {customers.length === 0 ? (
-            <p style={{ padding: 24, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
-              No customer records match this search across the platform.
-            </p>
-          ) : (
-          <table className="kee-table">
-            <thead>
-              <tr>
-                <th>Tenant Workspace</th>
-                <th>Customer</th>
-                <th>Phone</th>
-                <th>Key Code</th>
-                <th>Registered</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map(c => (
-                <tr key={c.id}>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.shop ? c.shop.name : 'Shop Workspace'}</td>
-                  <td>
-                    <div className="cell-primary">{c.name}</div>
-                  </td>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
-                  <td>
-                    <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
-                  </td>
-                  <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>
-                    {new Date(c.createdAt).toLocaleDateString()}
-                    <div className="cell-sub">{new Date(c.createdAt).toLocaleTimeString()}</div>
-                  </td>
-                  <td>
-                    <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                      <button onClick={() => setViewCust(c)} className="icon-btn" title="View compliance file">
-                        <Eye />
-                      </button>
-                      <button onClick={() => handleEditClick(c)} className="icon-btn" title="Edit customer record">
-                        <Edit />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          )}
         </div>
-      )}
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 200 }}>
+            <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading customer registry&hellip;</span>
+          </div>
+        ) : customers.length === 0 ? (
+          <p style={{ padding: 24, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
+            No customer records match this search across the platform.
+          </p>
+        ) : (
+        <table className="kee-table">
+          <thead>
+            <tr>
+              <th>Tenant Workspace</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Key Code</th>
+              <th>Registered</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {customers.map(c => (
+              <tr key={c.id}>
+                <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.shop ? c.shop.name : 'Shop Workspace'}</td>
+                <td>
+                  <div className="cell-primary">{c.name}</div>
+                </td>
+                <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
+                <td>
+                  <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
+                </td>
+                <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>
+                  {new Date(c.createdAt).toLocaleDateString()}
+                  <div className="cell-sub">{new Date(c.createdAt).toLocaleTimeString()}</div>
+                </td>
+                <td>
+                  <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                    <button onClick={() => setViewCust(c)} className="icon-btn" title="View compliance file">
+                      <Eye />
+                    </button>
+                    <button onClick={() => handleEditClick(c)} className="icon-btn" title="Edit customer record">
+                      <Edit />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        )}
+      </div>
 
       {/* Edit Customer Profile drawer */}
       {showEditDrawer && selectedCust && createPortal(
@@ -3977,12 +4191,19 @@ function SuperCustomersView({ api }) {
 // ============================================================================
 // COMPONENT 4: MASTER KEY DATABASE CRUD (SUPER ADMIN ONLY)
 // ============================================================================
-function KeysCatalogView({ api }) {
+function KeysCatalogView({ api, searchDispatch }) {
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editKey, setEditKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Picks up a query dispatched from the global header search panel (filter = "Key").
+  useEffect(() => {
+    if (searchDispatch && searchDispatch.type === 'key') {
+      setSearchQuery(searchDispatch.query);
+    }
+  }, [searchDispatch?.nonce]);
 
   // Form states
   const [keyNumber, setKeyNumber] = useState('');
@@ -4309,322 +4530,6 @@ function KeysCatalogView({ api }) {
                   className="btn btn-primary"
                 >
                   {editKey ? 'Save Changes' : 'Publish Key'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// COMPONENT 5: STORE INVENTORY & DISPATCH fulfillment (SUPER ADMIN ONLY)
-// ============================================================================
-function StoreInventoryView({ t, api }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editProduct, setEditProduct] = useState(null);
-
-  // Form states
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('Key Blanks');
-  const [stock, setStock] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [discountPercentage, setDiscountPercentage] = useState(0);
-
-  useEffect(() => {
-    fetchInventoryData();
-  }, []);
-
-  const fetchInventoryData = async () => {
-    setLoading(true);
-    try {
-      const res = await api.getProducts();
-      setProducts(res);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProductSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const dto = { 
-        name, 
-        description, 
-        price: Number(price), 
-        discountPercentage: Number(discountPercentage),
-        category, 
-        stock: Number(stock), 
-        imageUrl 
-      };
-      if (editProduct) {
-        await api.updateProduct(editProduct.id, dto);
-      } else {
-        await api.createProduct(dto);
-      }
-      setShowAddModal(false);
-      resetProductForm();
-      fetchInventoryData();
-    } catch (err) {
-      alert(err.message || 'Operation failed');
-    }
-  };
-
-  const resetProductForm = () => {
-    setEditProduct(null);
-    setName('');
-    setDescription('');
-    setPrice('');
-    setCategory('Key Blanks');
-    setStock('');
-    setImageUrl('');
-    setDiscountPercentage(0);
-  };
-
-  const handleEditProductClick = (p) => {
-    setEditProduct(p);
-    setName(p.name);
-    setDescription(p.description || '');
-    setPrice(p.price);
-    setCategory(p.category);
-    setStock(p.stock);
-    setImageUrl(p.imageUrl || '');
-    setDiscountPercentage(p.discountPercentage || 0);
-    setShowAddModal(true);
-  };
-
-  const handleDeleteProduct = async (id) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    try {
-      await api.deleteProduct(id);
-      fetchInventoryData();
-    } catch (e) {
-      alert(e.message);
-    }
-  };
-
-  const categoryIcon = (cat) => {
-    if (cat === 'Key Blanks') return Key;
-    if (cat === 'Machines') return Cog;
-    if (cat === 'Accessories') return Wrench;
-    return Package;
-  };
-
-  const stockBadge = (s) => {
-    if (s === 0) return { cls: 'badge-suspended', label: 'Out of stock' };
-    if (s < 5) return { cls: 'badge-pending', label: `Low stock \u2022 ${s}` };
-    return { cls: 'badge-active', label: `In stock \u2022 ${s}` };
-  };
-
-  return (
-    <div className="animate-fade-in">
-      <div className="page-head">
-        <div>
-          <div className="eyebrow"><Package /> Platform Store</div>
-          <h1>{t('inventory')}</h1>
-          <p>Sell key blank supplies, milling accessories, and cutters to key shops.</p>
-        </div>
-        <button
-          onClick={() => { resetProductForm(); setShowAddModal(true); }}
-          className="btn btn-primary"
-        >
-          <Plus />
-          <span>Add Store Product</span>
-        </button>
-      </div>
-
-      {
-        loading ? (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 260 }}>
-            <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading inventory&hellip;</span>
-          </div>
-        ) : products.length === 0 ? (
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 220 }}>
-            <div className="icon-badge"><Package /></div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>No store products yet &mdash; add one to start selling.</span>
-          </div>
-        ) : (
-          <div className="product-grid stagger-in">
-            {products.map(p => {
-              const Icon = categoryIcon(p.category);
-              const sb = stockBadge(p.stock);
-              return (
-                <div key={p.id} className="product-card">
-                  <div className="product-img">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" style={{ opacity: 0.9 }} />
-                    ) : (
-                      <Icon />
-                    )}
-                    <span className="product-tag">{p.category}</span>
-                  </div>
-                  <div className="product-body">
-                    <div className="flex items-center justify-between">
-                      <span className="pname">{p.name}</span>
-                      <span className={`badge ${sb.cls}`}><span className="dot" />{sb.label}</span>
-                    </div>
-                    {p.description && (
-                      <p style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600, fontStyle: 'italic' }}>&ldquo;{p.description}&rdquo;</p>
-                    )}
-                    <div className="product-foot" style={{ marginTop: 4 }}>
-                      {p.discountPercentage > 0 ? (
-                        <div>
-                          <div style={{ fontSize: 11, color: 'var(--text-3)', textDecoration: 'line-through', fontWeight: 700 }}>
-                            &#8377;{p.price.toFixed(2)}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="price">&#8377;{(p.offerPrice || p.price).toFixed(2)}</span>
-                            <span className="badge badge-active" style={{ padding: '2px 8px', fontSize: 9.5 }}>{p.discountPercentage}% OFF</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="price">&#8377;{p.price.toFixed(2)}</span>
-                      )}
-                    </div>
-                    <div className="flex gap-2" style={{ marginTop: 4 }}>
-                      <button
-                        onClick={() => handleEditProductClick(p)}
-                        className="btn btn-ghost btn-sm"
-                        style={{ flex: 1 }}
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(p.id)}
-                        className="btn btn-danger-outline btn-sm"
-                        style={{ flex: 1 }}
-                      >
-                        <Trash className="h-3.5 w-3.5" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )
-      }
-
-      {/* Add / Edit Product Modal */}
-      {showAddModal && createPortal(
-        <div className="fixed inset-0 z-50 overflow-y-auto flex justify-center p-4 md:p-10" style={{ background: 'rgba(5,4,3,0.85)' }}>
-          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 640, margin: 'auto', padding: 28 }}>
-            <div className="flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 18 }}>
-              <div>
-                <span className="eyebrow" style={{ marginBottom: 4 }}><ShoppingBag /> Store Catalogue</span>
-                <h2 style={{ fontSize: 19 }}>{editProduct ? 'Modify Product Stock' : 'Add Wholesale Product'}</h2>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="icon-btn">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleProductSubmit}>
-              <div className="field">
-                <label>Product / Supply Title</label>
-                <div className="input-wrap">
-                  <Tag />
-                  <input
-                    type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Godrej Blank Keys Box of 100"
-                  />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Visual Creative URL</label>
-                <div className="input-wrap">
-                  <ImageIcon />
-                  <input
-                    type="text" required value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com..."
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>Price (&#8377;)</label>
-                  <div className="input-wrap">
-                    <IndianRupee />
-                    <input
-                      type="number" step="0.01" required value={price} onChange={(e) => setPrice(e.target.value)}
-                      placeholder="45.00"
-                    />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Discount Offer (%)</label>
-                  <div className="input-wrap">
-                    <Percent />
-                    <input
-                      type="number" min="0" max="100" value={discountPercentage} onChange={(e) => setDiscountPercentage(e.target.value)}
-                      placeholder="e.g. 20"
-                    />
-                  </div>
-                  <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>
-                    Offer price: &#8377;{(price * (1 - (Number(discountPercentage) || 0) / 100)).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>Wholesale Stock</label>
-                  <div className="input-wrap">
-                    <Boxes />
-                    <input
-                      type="number" required value={stock} onChange={(e) => setStock(e.target.value)}
-                      placeholder="50"
-                    />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>Store Category</label>
-                  <select
-                    className="sel"
-                    value={category} onChange={(e) => setCategory(e.target.value)}
-                  >
-                    <option value="Key Blanks">Key Blanks</option>
-                    <option value="Machines">Machines</option>
-                    <option value="Accessories">Accessories</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Catalog Description</label>
-                <textarea
-                  rows={2} value={description} onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Specs, metal structure, etc."
-                  style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 13, padding: '13px 15px', fontSize: 13.5, outline: 'none', resize: 'vertical' }}
-                />
-              </div>
-
-              <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 4 }}>
-                <button
-                  type="button" onClick={() => setShowAddModal(false)}
-                  className="btn btn-ghost"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                >
-                  Save Product
                 </button>
               </div>
             </form>
@@ -5035,20 +4940,30 @@ function AdsManagementView({ api }) {
 // listing platform-wide, plus gets dedicated Banner Management and Offer
 // Management sub-tabs alongside the plain marketplace feed.
 // ============================================================================
-function PromotionsView({ api, user }) {
+// OLX-style inventory categories. Freeform on the backend (productType is a
+// plain string, not an enum) so this list can grow without a migration.
+const PRODUCT_TYPES = ['Key Blanks', 'Duplicate Keys', 'Machines', 'Accessories', 'Other'];
+
+function PromotionsView({ api, user, searchDispatch }) {
   const isSuperAdmin = user.role === 'SUPER_ADMIN';
   const [subTab, setSubTab] = useState('feed'); // feed | banners | offers (banners/offers = Super Admin only)
+
+  // A query dispatched from the global header search panel always targets
+  // the plain Inventory Feed, never the Banner/Offer moderation sub-tabs.
+  useEffect(() => {
+    if (searchDispatch) setSubTab('feed');
+  }, [searchDispatch?.nonce]);
 
   return (
     <div className="animate-fade-in">
       <div className="page-head">
         <div>
-          <div className="eyebrow"><Megaphone /> Cross-Shop Marketplace</div>
-          <h1>Promotions</h1>
+          <div className="eyebrow"><Package /> Cross-Shop Marketplace</div>
+          <h1>Inventory</h1>
           <p>
             {isSuperAdmin
-              ? 'Manage the shared marketplace feed, banner ad campaigns and shop offers across the platform.'
-              : 'Products, advertisements and active offers shared across every shop on the platform.'}
+              ? 'Manage the shared inventory feed, banner ad campaigns and shop offers across the platform.'
+              : 'Browse and list products shared across every shop on the platform, OLX-style.'}
           </p>
         </div>
       </div>
@@ -5061,7 +4976,7 @@ function PromotionsView({ api, user }) {
             onClick={() => setSubTab('feed')}
           >
             <Layers className="h-3.5 w-3.5" style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
-            Marketplace Feed
+            Inventory Feed
           </button>
           <button
             type="button"
@@ -5085,13 +5000,13 @@ function PromotionsView({ api, user }) {
       {subTab === 'banners' && isSuperAdmin ? (
         <AdsManagementView api={api} />
       ) : (
-        <PromotionsFeed key={subTab} api={api} user={user} isSuperAdmin={isSuperAdmin} onlyOffers={subTab === 'offers'} />
+        <PromotionsFeed key={subTab} api={api} user={user} isSuperAdmin={isSuperAdmin} onlyOffers={subTab === 'offers'} searchDispatch={subTab === 'feed' ? searchDispatch : null} />
       )}
     </div>
   );
 }
 
-function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
+function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch }) {
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -5104,13 +5019,32 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [price, setPrice] = useState('');
+  const [productType, setProductType] = useState(PRODUCT_TYPES[0]);
   const [discountPercentage, setDiscountPercentage] = useState('');
   const [validUntil, setValidUntil] = useState('');
   const [linkedPromotionId, setLinkedPromotionId] = useState('');
 
+  // OLX-style category filter chip, applied client-side over the fetched feed.
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+
+  // Free-text query, either typed locally or dispatched from the global
+  // header search panel (filter = "Product Type" / "Location" / "Anything").
+  const [textQuery, setTextQuery] = useState('');
+
   useEffect(() => {
     fetchPromotions();
   }, []);
+
+  useEffect(() => {
+    if (searchDispatch && ['productType', 'location', 'all'].includes(searchDispatch.type)) {
+      setTextQuery(searchDispatch.query);
+      if (searchDispatch.type === 'productType') {
+        // If the query exactly matches a known category, jump straight to that chip.
+        const match = PRODUCT_TYPES.find(pt => pt.toLowerCase() === searchDispatch.query.trim().toLowerCase());
+        if (match) setCategoryFilter(match);
+      }
+    }
+  }, [searchDispatch?.nonce]);
 
   const fetchPromotions = async () => {
     setLoading(true);
@@ -5133,6 +5067,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
     setDescription('');
     setImageUrl('');
     setPrice('');
+    setProductType(PRODUCT_TYPES[0]);
     setDiscountPercentage('');
     setValidUntil('');
     setLinkedPromotionId('');
@@ -5148,6 +5083,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
     setDescription(promo.description || '');
     setImageUrl(promo.imageUrl || '');
     setPrice(promo.price ?? '');
+    setProductType(promo.productType || PRODUCT_TYPES[0]);
     setDiscountPercentage(promo.discountPercentage ?? '');
     setValidUntil(promo.validUntil ? promo.validUntil.slice(0, 10) : '');
     setLinkedPromotionId(promo.linkedPromotionId || '');
@@ -5165,6 +5101,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
         description: description || undefined,
         imageUrl: imageUrl || undefined,
         price: price === '' ? undefined : Number(price),
+        productType: type === 'PRODUCT' ? (productType || undefined) : undefined,
         discountPercentage: type === 'OFFER' && discountPercentage !== '' ? Number(discountPercentage) : undefined,
         validUntil: type === 'OFFER' && validUntil ? new Date(validUntil).toISOString() : undefined,
         linkedPromotionId: type === 'OFFER' && linkedPromotionId ? linkedPromotionId : undefined,
@@ -5205,17 +5142,67 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
   const linkShopId = editingId ? editingPromo?.shopId : user.shopId;
   const linkableListings = promotions.filter(p => p.shopId === linkShopId && p.type !== 'OFFER' && p.id !== editingId);
 
+  // OLX-style category chips: only meaningful on the default mixed feed (not
+  // the Offer Management moderation screen), and only shown once there's
+  // more than one distinct productType actually present in the feed.
+  const availableCategories = !onlyOffers
+    ? Array.from(new Set(promotions.map(p => p.productType).filter(Boolean)))
+    : [];
+  const byCategory = categoryFilter === 'ALL'
+    ? promotions
+    : promotions.filter(p => p.productType === categoryFilter);
+  const q = textQuery.trim().toLowerCase();
+  const visiblePromotions = !q ? byCategory : byCategory.filter(p =>
+    (p.title || '').toLowerCase().includes(q) ||
+    (p.description || '').toLowerCase().includes(q) ||
+    (p.productType || '').toLowerCase().includes(q) ||
+    (p.shop?.name || '').toLowerCase().includes(q) ||
+    (p.createdBy?.name || '').toLowerCase().includes(q)
+  );
+
   return (
     <div>
-      {!isSuperAdmin && (
-        <div className="flex justify-end" style={{ marginTop: 4, marginBottom: 18 }}>
+      <div className="flex justify-between items-center" style={{ marginTop: 4, marginBottom: 18, gap: 10, flexWrap: 'wrap' }}>
+        <div className="input-wrap" style={{ flex: 1, minWidth: 220, margin: 0 }}>
+          <Search />
+          <input
+            type="text" value={textQuery} onChange={(e) => setTextQuery(e.target.value)}
+            placeholder="Search inventory by name, product type, shop or seller…"
+          />
+        </div>
+        {!isSuperAdmin && (
           <button
             onClick={() => { resetForm(); setShowAddModal(true); }}
             className="btn btn-primary"
+            style={{ flexShrink: 0 }}
           >
             <Plus />
             <span>New Listing</span>
           </button>
+        )}
+      </div>
+
+      {availableCategories.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('ALL')}
+            className={`badge ${categoryFilter === 'ALL' ? 'badge-gold' : ''}`}
+            style={categoryFilter === 'ALL' ? undefined : { background: 'var(--card-2)', border: '1px solid var(--border-2)', color: 'var(--text-2)', cursor: 'pointer' }}
+          >
+            All Categories
+          </button>
+          {availableCategories.map(cat => (
+            <button
+              type="button"
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`badge ${categoryFilter === cat ? 'badge-gold' : ''}`}
+              style={categoryFilter === cat ? undefined : { background: 'var(--card-2)', border: '1px solid var(--border-2)', color: 'var(--text-2)', cursor: 'pointer' }}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       )}
 
@@ -5224,26 +5211,32 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
           <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading listings&hellip;</span>
         </div>
-      ) : promotions.length === 0 ? (
+      ) : visiblePromotions.length === 0 ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 220 }}>
-          <div className="icon-badge"><Megaphone /></div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>{onlyOffers ? 'No offers published yet.' : 'No promotions published yet.'}</span>
+          <div className="icon-badge"><Package /></div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>{onlyOffers ? 'No offers published yet.' : 'No inventory listed yet.'}</span>
         </div>
       ) : (
         <div className="product-grid stagger-in">
-          {promotions.map(promo => {
+          {visiblePromotions.map(promo => {
             const meta = typeMeta(promo.type);
             const Icon = meta.icon;
             const expired = isExpiredOffer(promo);
             return (
               <div key={promo.id} className="product-card">
-                <div className="product-img" style={{ height: 150 }}>
+                <div className="product-img" style={{ height: 150, aspectRatio: '1 / 1', maxHeight: 190 }}>
                   {promo.imageUrl ? (
                     <img src={cleanGoogleImageUrl(promo.imageUrl)} alt={promo.title} className="w-full h-full object-cover" style={{ opacity: 0.9 }} />
                   ) : (
                     <Icon />
                   )}
-                  <span className="product-tag"><Icon className="h-3 w-3" style={{ display: 'inline', marginRight: 4, verticalAlign: '-1px' }} />{meta.label}</span>
+                  <span className="product-tag">
+                    {promo.type === 'PRODUCT' && promo.productType ? (
+                      <><Tag className="h-3 w-3" style={{ display: 'inline', marginRight: 4, verticalAlign: '-1px' }} />{promo.productType}</>
+                    ) : (
+                      <><Icon className="h-3 w-3" style={{ display: 'inline', marginRight: 4, verticalAlign: '-1px' }} />{meta.label}</>
+                    )}
+                  </span>
                   {expired && (
                     <span className="badge badge-suspended" style={{ position: 'absolute', top: 10, right: 10 }}>Expired</span>
                   )}
@@ -5332,8 +5325,8 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
           <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 640, margin: 'auto', padding: 28 }}>
             <div className="flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 18 }}>
               <div>
-                <span className="eyebrow" style={{ marginBottom: 4 }}><Megaphone /> Promotion Listing</span>
-                <h2 style={{ fontSize: 19 }}>{editingId ? 'Edit Listing' : 'New Promotion Listing'}</h2>
+                <span className="eyebrow" style={{ marginBottom: 4 }}><Package /> Inventory Listing</span>
+                <h2 style={{ fontSize: 19 }}>{editingId ? 'Edit Listing' : 'New Inventory Listing'}</h2>
               </div>
               <button onClick={() => setShowAddModal(false)} className="icon-btn">
                 <X className="h-4 w-4" />
@@ -5351,22 +5344,33 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
               <div className="field">
                 <label>Listing Type</label>
                 <select className="sel" value={type} onChange={(e) => setType(e.target.value)}>
-                  <option value="PRODUCT">Promotional Product</option>
+                  <option value="PRODUCT">Inventory Product</option>
                   <option value="AD">Advertisement</option>
                   <option value="OFFER">Offer / Discount</option>
                 </select>
               </div>
 
               <div className="field">
-                <label>Title</label>
+                <label>Name</label>
                 <div className="input-wrap">
                   <Tag />
                   <input
                     type="text" required value={title} onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Premium Godrej Key Blanks - Bulk Offer"
+                    placeholder="e.g. Premium Godrej Key Blanks - Bulk Pack"
                   />
                 </div>
               </div>
+
+              {type === 'PRODUCT' && (
+                <div className="field">
+                  <label>Product Type</label>
+                  <select className="sel" value={productType} onChange={(e) => setProductType(e.target.value)}>
+                    {PRODUCT_TYPES.map(pt => (
+                      <option key={pt} value={pt}>{pt}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="field">
                 <label>Description (optional)</label>
@@ -5380,7 +5384,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
               </div>
 
               <div className="field">
-                <label>Image / Media (optional)</label>
+                <label>{type === 'PRODUCT' ? 'Product Photo (optional)' : 'Image / Media (optional)'}</label>
                 <div className="flex gap-2">
                   <div className="input-wrap" style={{ flex: 1 }}>
                     <ImageIcon />
@@ -5840,7 +5844,7 @@ function RevenueManagementView({ api }) {
 // ============================================================================
 // COMPONENT 8: BLANK KEY SEARCH (SHOP ADMIN ONLY)
 // ============================================================================
-function KeysSearchView({ api }) {
+function KeysSearchView({ api, searchDispatch }) {
   const { user } = useAuth();
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -5850,6 +5854,13 @@ function KeysSearchView({ api }) {
   useEffect(() => {
     performSearch();
   }, [query]);
+
+  // Picks up a query dispatched from the global header search panel (filter = "Key").
+  useEffect(() => {
+    if (searchDispatch && searchDispatch.type === 'key') {
+      setQuery(searchDispatch.query);
+    }
+  }, [searchDispatch?.nonce]);
 
   const performSearch = async () => {
     setLoading(true);
@@ -7065,11 +7076,19 @@ function CustomerRegistrationWizard({ t, api }) {
 // ============================================================================
 // COMPONENT 10: CUSTOMER HISTORY LOOKUP (SHOP ADMIN ONLY)
 // ============================================================================
-function CustomerHistoryView({ t, api }) {
+function CustomerHistoryView({ t, api, searchDispatch }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCust, setSelectedCust] = useState(null);
+
+  // Picks up a query dispatched from the global header search panel
+  // (filter = "Customer").
+  useEffect(() => {
+    if (searchDispatch && searchDispatch.type === 'customer') {
+      setSearch(searchDispatch.query);
+    }
+  }, [searchDispatch?.nonce]);
 
   // Edit States
   const [isEditing, setIsEditing] = useState(false);
@@ -7173,75 +7192,77 @@ function CustomerHistoryView({ t, api }) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 260 }}>
-          <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading compliance records&hellip;</span>
-        </div>
-      ) : (
-        <div className="card table-card">
-          <div className="table-head">
-            <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 17 }}>
-              Registration Log <span style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 13 }}>({customers.length})</span>
-            </h2>
-            <div className="search-box">
-              <Search />
-              <input
-                type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, phone, key code&hellip;"
-              />
-            </div>
+      {/* The search box lives outside the loading/results swap below so it
+          never unmounts while typing - every keystroke re-triggers the
+          fetch (briefly flipping `loading`), but the input itself stays
+          mounted the whole time and keeps focus. */}
+      <div className="card table-card">
+        <div className="table-head">
+          <h2 style={{ fontFamily: 'var(--display)', fontWeight: 800, fontSize: 17 }}>
+            Registration Log <span style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 13 }}>({customers.length})</span>
+          </h2>
+          <div className="search-box">
+            <Search />
+            <input
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, phone, key code&hellip;"
+            />
           </div>
-
-          {customers.length === 0 ? (
-            <p style={{ padding: 24, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
-              No compliance records match this search.
-            </p>
-          ) : (
-          <table className="kee-table history-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Phone</th>
-                <th>Vehicle</th>
-                <th>Key Code</th>
-                <th>Location</th>
-                <th>Logged</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map(c => (
-                <tr key={c.id} onClick={() => setSelectedCust(c)} style={{ cursor: 'pointer' }}>
-                  <td data-label="Customer">
-                    <div className="cell-primary">{c.name}</div>
-                  </td>
-                  <td className="cell-sub" data-label="Phone" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
-                  <td className="cell-sub" data-label="Vehicle" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.vehicleNumber || 'N/A'}</td>
-                  <td data-label="Key Code">
-                    <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
-                  </td>
-                  <td className="cell-sub" data-label="Location" style={{ fontWeight: 700, color: 'var(--text-2)', maxWidth: 180 }}>
-                    <span className="flex items-center gap-1" style={{ overflow: 'hidden' }}>
-                      <MapPin style={{ width: 13, height: 13, color: 'var(--green)', flexShrink: 0 }} />
-                      <span className="truncate">{c.capturedAddress || 'N/A'}</span>
-                    </span>
-                  </td>
-                  <td className="cell-sub" data-label="Logged" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
-                  <td data-label="Actions">
-                    <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedCust(c); }} className="icon-btn" title="View compliance file">
-                        <Eye />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          )}
         </div>
-      )}
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: 200 }}>
+            <RefreshCw className="animate-spin" style={{ width: 28, height: 28, color: 'var(--gold)' }} />
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Loading compliance records&hellip;</span>
+          </div>
+        ) : customers.length === 0 ? (
+          <p style={{ padding: 24, fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
+            No compliance records match this search.
+          </p>
+        ) : (
+        <table className="kee-table history-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Vehicle</th>
+              <th>Key Code</th>
+              <th>Location</th>
+              <th>Logged</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {customers.map(c => (
+              <tr key={c.id} onClick={() => setSelectedCust(c)} style={{ cursor: 'pointer' }}>
+                <td data-label="Customer">
+                  <div className="cell-primary">{c.name}</div>
+                </td>
+                <td className="cell-sub" data-label="Phone" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
+                <td className="cell-sub" data-label="Vehicle" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.vehicleNumber || 'N/A'}</td>
+                <td data-label="Key Code">
+                  <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
+                </td>
+                <td className="cell-sub" data-label="Location" style={{ fontWeight: 700, color: 'var(--text-2)', maxWidth: 180 }}>
+                  <span className="flex items-center gap-1" style={{ overflow: 'hidden' }}>
+                    <MapPin style={{ width: 13, height: 13, color: 'var(--green)', flexShrink: 0 }} />
+                    <span className="truncate">{c.capturedAddress || 'N/A'}</span>
+                  </span>
+                </td>
+                <td className="cell-sub" data-label="Logged" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                <td data-label="Actions">
+                  <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                    <button onClick={(e) => { e.stopPropagation(); setSelectedCust(c); }} className="icon-btn" title="View compliance file">
+                      <Eye />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        )}
+      </div>
 
       {selectedCust && createPortal(
         <div className="fixed inset-0 z-50 overflow-y-auto flex justify-center p-4 md:p-10" style={{ background: 'rgba(5,4,3,0.82)' }}>

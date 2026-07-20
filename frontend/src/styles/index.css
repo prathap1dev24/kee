@@ -323,6 +323,32 @@
 .badge-gold { background: var(--gold-dim); color: var(--gold); }
 .badge-gold .dot { background: var(--gold); }
 
+/* ===================== Mobile bottom navigation bar ===================== */
+.mobile-bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+  display: flex; align-items: stretch; justify-content: space-around;
+  background: var(--card); border-top: 1px solid var(--border);
+  box-shadow: 0 -10px 30px rgba(30, 41, 59, 0.12);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mbn-item {
+  flex: 1 1 0%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 9px 4px 10px; background: transparent; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 10.5px; font-weight: 700; font-family: var(--sans);
+  transition: color .15s ease;
+}
+.mbn-item svg { width: 20px; height: 20px; stroke-width: 2; }
+.mbn-item.active { color: var(--gold); }
+
+.lang-option-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-2);
+  background: var(--card-2); color: var(--text-1); font-size: 13.5px; font-weight: 700;
+  cursor: pointer; transition: all .15s ease;
+}
+.lang-option-btn.active { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
+.lang-option-btn:hover { border-color: var(--gold); }
+
 .row-actions { display: flex; gap: 8px; }
 .icon-btn {
   width: 32px; height: 32px; border-radius: 9px;
@@ -332,6 +358,34 @@
 }
 .icon-btn:hover { color: var(--gold); border-color: rgba(79, 70, 229, 0.4); background: var(--gold-dim); }
 .icon-btn svg { width: 15px; height: 15px; }
+
+/* Global header "search by" dropdown - a custom icon+label trigger/menu
+   (not a native <select>) so the trigger can collapse to icon-only on
+   mobile while the open menu always shows full labels. Touch target is
+   kept >=40px tall on every screen size. */
+.search-type-trigger {
+  display: flex; align-items: center; gap: 6px;
+  height: 40px; padding: 0 12px; border-radius: 12px;
+  background: var(--card-2); border: 1.5px solid var(--border-2);
+  color: var(--text-2); font-size: 12.5px; font-weight: 700;
+  white-space: nowrap; flex-shrink: 0; transition: all .18s ease;
+}
+.search-type-trigger:hover { border-color: rgba(79, 70, 229, 0.4); color: var(--text-0); }
+.search-type-trigger svg { flex-shrink: 0; color: var(--text-3); }
+.search-type-backdrop { position: fixed; inset: 0; z-index: 998; background: transparent; }
+.search-type-menu {
+  position: absolute; top: 46px; left: 0; z-index: 999;
+  width: max-content; min-width: 160px; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.search-type-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 9px; font-size: 12.5px; font-weight: 700;
+  color: var(--text-2); text-align: left; width: 100%; transition: all .15s ease;
+}
+.search-type-item svg { flex-shrink: 0; color: var(--text-3); }
+.search-type-item:hover { background: var(--card-2); color: var(--text-0); }
+.search-type-item.active { background: var(--gold-dim); color: var(--gold); }
+.search-type-item.active svg { color: var(--gold); }
 
 /* login */
 .login-shell { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
@@ -850,6 +904,28 @@ select.sel:focus { border-color: var(--gold); }
   .page-head h1 { font-size: 22px; }
   .page-head p { font-size: 13px; }
   .eyebrow { margin-bottom: 6px; }
+
+  /* Shop-admin dashboard: hide Register Customer + Refresh buttons on
+     mobile — their actions now live in the bottom nav / register tab. */
+  .dash-header-actions { display: none; }
+
+  /* Global header search panel: decrowd the whole top bar on mobile.
+     - The hamburger, the "search by" trigger, the search input, the bell
+       and the avatar all have to fit on one row without overflowing.
+     - The "search by" trigger collapses to an icon-only square button
+       (its text label is hidden) so almost all of the remaining width
+       goes to the text input, per the "replace text labels with icons"
+       requirement.
+     - Every interactive control stays >=38px so touch targets remain
+       comfortable even in the compact layout. */
+  .app-topbar { padding: 10px 12px !important; gap: 8px; }
+  .header-search-wrap { gap: 6px; }
+  .global-search-form { gap: 6px !important; }
+  .search-type-trigger { width: 38px; height: 38px; padding: 0; justify-content: center; }
+  .search-type-label { display: none; }
+  .global-search-input input { font-size: 12.5px; padding-left: 38px; }
+  .app-topbar-actions { gap: 8px !important; }
+  .app-topbar .icon-btn { width: 38px; height: 38px; }
 
   /* cards */
   .card { padding: 16px; border-radius: 16px; }

@@ -10,7 +10,6 @@ import { KeyModule } from './key/key.module';
 import { AdModule } from './ad/ad.module';
 import { ReportModule } from './report/report.module';
 import { NotificationModule } from './notification/notification.module';
-import { ProductModule } from './product/product.module';
 import { PromotionModule } from './promotion/promotion.module';
 import { TenantInterceptor } from './tenant/tenant.interceptor';
 
@@ -25,7 +24,6 @@ import { TenantInterceptor } from './tenant/tenant.interceptor';
     AdModule,
     ReportModule,
     NotificationModule,
-    ProductModule,
     PromotionModule,
   ],
   controllers: [AppController],

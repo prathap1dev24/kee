@@ -37,6 +37,12 @@ export class CreatePromotionDto {
   @IsString()
   @IsOptional()
   linkedPromotionId?: string;
+
+  // Freeform inventory category shown on the OLX-style product grid
+  // (e.g. "Key Blanks", "Duplicate Keys", "Machines", "Accessories").
+  @IsString()
+  @IsOptional()
+  productType?: string;
 }
 
 export class UpdatePromotionDto {
@@ -74,4 +80,8 @@ export class UpdatePromotionDto {
   @IsString()
   @IsOptional()
   linkedPromotionId?: string;
+
+  @IsString()
+  @IsOptional()
+  productType?: string;
 }

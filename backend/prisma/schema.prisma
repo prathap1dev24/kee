@@ -79,7 +79,6 @@ model Shop {
   customers     Customer[]
   activityLogs  ActivityLog[]
   notifications Notification[]
-  orders        Order[]
   masterKeys    MasterKey[]
   documents     ShopDocument[]
   promotions    Promotion[]
@@ -257,6 +256,11 @@ model Promotion {
   imageUrl    String?
   price       Float?
 
+  // Inventory rework: freeform product category shown on the OLX-style
+  // inventory grid (e.g. "Key Blanks", "Duplicate Keys", "Machines",
+  // "Accessories"). Nullable/additive so existing rows are unaffected.
+  productType String?
+
   // Only meaningful for type === OFFER: a percentage discount and/or an expiry
   // (validUntil null = no expiry). The cross-shop feed excludes expired offers
   // by default - see PromotionService.getAllPromotions.
@@ -342,57 +346,6 @@ model RevenueRecord {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model Product {
-  id                 String      @id @default(uuid())
-  name               String
-  description        String?
-  price              Float
-  discountPercentage Float       @default(0)
-  offerPrice         Float?
-  imageUrl           String?
-  category           String // "Key Blanks", "Machines", "Accessories"
-  stock              Int         @default(0)
-  status             KeyStatus   @default(ACTIVE)
-  orderItems         OrderItem[]
-
-  deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([deletedAt])
-}
-
-// Orders and OrderItems are transactional/financial records, not user-managed
-// entities, so they intentionally have no soft-delete field: they are never
-// deleted by application code, only status-transitioned (see updateOrderStatus).
-model Order {
-  id          String      @id @default(uuid())
-  shopId      String
-  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  totalAmount Float
-  status      String      @default("PENDING") // PENDING, DISPATCHED, DELIVERED, CANCELLED
-  items       OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@index([shopId])
-  @@index([shopId, status])
-}
-
-model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  quantity  Int
-  price     Float
-
-  @@index([orderId])
-  @@index([productId])
 }
 
 // Singleton row (fixed id "default") holding the Super Admin-managed global

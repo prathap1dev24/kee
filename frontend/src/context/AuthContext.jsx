@@ -265,15 +265,6 @@ export const AuthProvider = ({ children }) => {
     getSettings: async () => request('/api/shop/settings'),
     updateSettings: async (dto) => request('/api/shop/settings', 'PUT', dto),
 
-    // --- PRODUCTS ---
-    getProducts: async () => {
-      const url = user.role === 'SUPER_ADMIN' ? '/api/super/products' : '/api/shop/products';
-      return request(url);
-    },
-    createProduct: async (dto) => request('/api/super/products', 'POST', dto),
-    updateProduct: async (id, dto) => request(`/api/super/products/${id}`, 'PUT', dto),
-    deleteProduct: async (id) => request(`/api/super/products/${id}`, 'DELETE'),
-
     // --- CROSS-SHOP PROMOTIONS (advertisements & promotional products, visible to every shop) ---
     // GET is a shared feed: every shop admin and the super admin see every shop's listings.
     getPromotions: async (includeExpiredOffers = false) =>

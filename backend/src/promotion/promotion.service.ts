@@ -50,6 +50,7 @@ export class PromotionService {
         discountPercentage: dto.discountPercentage,
         validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
         linkedPromotionId: dto.linkedPromotionId,
+        productType: dto.productType,
         shopId,
         createdById: userId,
       },

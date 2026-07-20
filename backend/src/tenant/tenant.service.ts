@@ -13,8 +13,8 @@ import { getTenantContext } from './tenant.context';
 // are resolved by Prisma via a join/batched query that this extension does not
 // intercept, so a soft-deleted related row can still surface inside a nested include.
 // Application code that needs to guarantee a related row is active must filter
-// explicitly (see key.service.ts / product.service.ts for examples).
-const SOFT_DELETE_MODELS = ['Shop', 'User', 'MasterKey', 'Customer', 'CustomerDocument', 'ShopDocument', 'Product', 'Promotion'];
+// explicitly (see key.service.ts for an example).
+const SOFT_DELETE_MODELS = ['Shop', 'User', 'MasterKey', 'Customer', 'CustomerDocument', 'ShopDocument', 'Promotion'];
 
 // Tenant (shopId) row-level scoping applies to these models when a Shop Admin's
 // request context is active.
