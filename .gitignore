@@ -39,3 +39,7 @@ backend/prisma/*.db
 # User-uploaded documents (shop licenses, Aadhaar cards, shop photos, etc.)
 # — potentially sensitive PII, kept out of version control.
 backend/public/uploads/
+
+# Built Android APK output (regenerate via: cd frontend && npx cap sync android &&
+# cd android && ./gradlew assembleDebug) — binary build artifact, not source.
+*.apk

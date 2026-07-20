@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from './context/AuthContext';
 import { getAssetUrl, downloadAsset } from './apiConfig';
 import PublicSite from './components/PublicSite';
@@ -475,6 +476,13 @@ const SEARCH_TYPE_OPTIONS = [
   { value: 'key', label: 'Key', icon: KeyRound },
 ];
 
+// True only when running inside the native Android/iOS shell (Capacitor),
+// never in a regular desktop/mobile browser. Used to skip the marketing
+// landing page (PublicSite) for the packaged app and drop straight into the
+// login screen, since a native app has no reason to show a browsable
+// marketing site before sign-in.
+const IS_NATIVE_APP = Capacitor.isNativePlatform();
+
 export default function App() {
   const { user, isAuthenticated, loading, login, logout, api } = useAuth();
   const [lang, setLang] = useState(localStorage.getItem('kee_lang') || 'en');
@@ -574,7 +582,9 @@ export default function App() {
   // Public (unauthenticated) marketing site page: home | search | about | contact | login.
   // Anonymous visitors land on 'home'; clicking "Login" (nav or hero CTA) switches this
   // to 'login', which renders the existing, unmodified login-shell UI below.
-  const [publicPage, setPublicPage] = useState('home');
+  // The native mobile app (IS_NATIVE_APP) has no use for the marketing site -
+  // it starts straight on 'login' and the render below never shows PublicSite.
+  const [publicPage, setPublicPage] = useState(IS_NATIVE_APP ? 'login' : 'home');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authError, setAuthError] = useState('');
@@ -877,7 +887,7 @@ export default function App() {
   return (
     <>
       {!isAuthenticated ? (
-        publicPage !== 'login' ? (
+        !IS_NATIVE_APP && publicPage !== 'login' ? (
           <PublicSite page={publicPage} onNavigate={setPublicPage} api={api} />
         ) : (
         <div className="login-shell">
@@ -932,9 +942,11 @@ export default function App() {
 
           <div className="login-form-side">
             <div className="login-box animate-fade-in">
-              <button type="button" className="back-to-home-link" onClick={() => setPublicPage('home')}>
-                <ArrowLeft className="h-3.5 w-3.5" /> Back to home
-              </button>
+              {!IS_NATIVE_APP && (
+                <button type="button" className="back-to-home-link" onClick={() => setPublicPage('home')}>
+                  <ArrowLeft className="h-3.5 w-3.5" /> Back to home
+                </button>
+              )}
               <div className="brand">
                 <span className="mark"><Key /></span>
                 Kee<span className="gold-dot">.</span>
