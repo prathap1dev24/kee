@@ -842,7 +842,7 @@ export default function App() {
               <p className="lead">Sign in to run your duplicate-key shop &mdash; orders, customers and inventory, all in one place.</p>
 
               {authError && (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', color: '#ffb9b4', padding: '12px 14px', borderRadius: 13, marginBottom: 20, fontSize: 12.5, fontWeight: 600 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', color: '#b91c1c', padding: '12px 14px', borderRadius: 13, marginBottom: 20, fontSize: 12.5, fontWeight: 600 }}>
                   <AlertTriangle className="h-4 w-4 shrink-0" style={{ marginTop: 1 }} />
                   <span>{authError}</span>
                 </div>
@@ -931,7 +931,7 @@ export default function App() {
                 </div>
 
                 {resetError && (
-                  <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', marginBottom: 16, fontWeight: 600 }}>
+                  <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', marginBottom: 16, fontWeight: 600 }}>
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{resetError}</span>
                   </div>
@@ -1148,7 +1148,7 @@ export default function App() {
             </div>
 
             {regError && (
-              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', fontWeight: 600, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', fontWeight: 600, marginBottom: 16 }}>
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{regError}</span>
               </div>
@@ -2170,7 +2170,7 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
                     <div style={{ width: '100%', background: 'var(--card-2)', height: 8, borderRadius: 999, overflow: 'hidden' }}>
                       <div
                         style={{
-                          background: 'linear-gradient(90deg, var(--gold), #b8890a)',
+                          background: 'linear-gradient(90deg, var(--gold), #3730a3)',
                           height: '100%',
                           borderRadius: 999,
                           width: `${(k.count / data.popularKeys[0].count) * 100}%`,
@@ -2428,13 +2428,13 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
                         <path d={areaD} fill="url(#lineGradient)" className="chart-area-fade" />
 
                         {/* Line path */}
-                        <path d={pathD} fill="none" stroke="#F0B90B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />
+                        <path d={pathD} fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />
 
                         {/* Data Points */}
                         {points.map((p, idx) => (
                           <g key={idx} className="group cursor-pointer">
-                            <circle cx={p.x} cy={p.y} r="4" fill="#F0B90B" stroke="#0a0908" strokeWidth="2" className="chart-dot-pop transition hover:r-6" style={{ animationDelay: `${0.6 + idx * 0.08}s` }} />
-                            <text x={p.x} y={p.y - 10} textAnchor="middle" fill="#F5C518" fontSize="9" fontWeight="bold" className="opacity-0 group-hover:opacity-100 transition duration-200">
+                            <circle cx={p.x} cy={p.y} r="4" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" className="chart-dot-pop transition hover:r-6" style={{ animationDelay: `${0.6 + idx * 0.08}s` }} />
+                            <text x={p.x} y={p.y - 10} textAnchor="middle" fill="#7c3aed" fontSize="9" fontWeight="bold" className="opacity-0 group-hover:opacity-100 transition duration-200">
                               {p.count}
                             </text>
                           </g>
@@ -2442,8 +2442,8 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
 
                         <defs>
                           <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#F0B90B" stopOpacity="0.6" />
-                            <stop offset="100%" stopColor="#F0B90B" stopOpacity="0" />
+                            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.6" />
+                            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
                           </linearGradient>
                         </defs>
                       </>
@@ -2727,7 +2727,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
         plan: subPlan,
         endDate: formattedEndDate,
         companyDetails,
-        themeColor: '#F0B90B',
+        themeColor: '#4f46e5',
         shopPhoto: provisionShopPhoto,
         shopLicense: provisionShopLicense,
         ownerAadhaar: provisionOwnerAadhaar
@@ -3002,7 +3002,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
             </div>
 
             {errorMsg && (
-              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', fontWeight: 600, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', fontWeight: 600, marginBottom: 16 }}>
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -4192,7 +4192,7 @@ function KeysCatalogView({ api }) {
             </div>
 
             {errorMsg && (
-              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', fontWeight: 600, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', fontWeight: 600, marginBottom: 16 }}>
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -4870,7 +4870,7 @@ function AdsManagementView({ api }) {
             </div>
 
             {errorMsg && (
-              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', fontWeight: 600, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', fontWeight: 600, marginBottom: 16 }}>
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -5341,7 +5341,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers }) {
             </div>
 
             {errorMsg && (
-              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', fontWeight: 600, marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', fontWeight: 600, marginBottom: 16 }}>
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -6409,7 +6409,7 @@ function CustomerRegistrationWizard({ t, api }) {
     if (step === 3 && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-      ctx.strokeStyle = '#F0B90B';
+      ctx.strokeStyle = '#4f46e5';
       ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
     }
@@ -7597,7 +7597,7 @@ export function CustomerCareView({ t, api }) {
                         className="flex items-center justify-center"
                         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)' }}
                       >
-                        <span style={{ width: 32, height: 32, borderRadius: 999, background: 'var(--gold)', color: '#1a1400', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="animate-pulse">
+                        <span style={{ width: 32, height: 32, borderRadius: 999, background: 'linear-gradient(135deg, var(--gold), var(--gold-2))', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="animate-pulse">
                           <PlayCircle style={{ width: 18, height: 18 }} />
                         </span>
                       </a>
@@ -8266,7 +8266,7 @@ function ShopSettingsView({ t, api }) {
 
             <form onSubmit={handlePasswordVerificationSubmit}>
               {passVerifyError && (
-                <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#ffb9b4', marginBottom: 16, fontWeight: 600 }}>
+                <div style={{ display: 'flex', gap: 8, background: 'var(--red-dim)', border: '1px solid rgba(220,38,38,0.35)', padding: 10, borderRadius: 12, fontSize: 12, color: '#b91c1c', marginBottom: 16, fontWeight: 600 }}>
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>{passVerifyError}</span>
                 </div>
@@ -8368,7 +8368,7 @@ function ShopSettingsView({ t, api }) {
                     style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 13, padding: '13px 15px', fontSize: 16, textAlign: 'center', letterSpacing: '.3em', fontWeight: 800, outline: 'none' }}
                   />
                 </div>
-                {otpResetError && <div style={{ color: '#ffb9b4', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>{otpResetError}</div>}
+                {otpResetError && <div style={{ color: '#b91c1c', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>{otpResetError}</div>}
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setOtpResetSent(false)} className="btn btn-ghost" style={{ flex: 1 }}>Back</button>
                   <button type="submit" disabled={otpResetLoading} className="btn btn-primary" style={{ flex: 2 }}>
@@ -8378,7 +8378,7 @@ function ShopSettingsView({ t, api }) {
               </form>
             ) : (
               <form onSubmit={handleOtpResetSubmit}>
-                {otpResetError && <div style={{ color: '#ffb9b4', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>{otpResetError}</div>}
+                {otpResetError && <div style={{ color: '#b91c1c', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>{otpResetError}</div>}
                 <div className="field">
                   <label>New Password</label>
                   <div className="input-wrap">
@@ -8773,8 +8773,8 @@ export function ReportsPortalView({ t, api }) {
                           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-28 overflow-visible">
                             <defs>
                               <linearGradient id="areaGradientReport" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#F0B90B" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#F0B90B" stopOpacity="0.0" />
+                                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
                               </linearGradient>
                             </defs>
                             
@@ -8786,13 +8786,13 @@ export function ReportsPortalView({ t, api }) {
                             <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
 
                             {/* Trend Line */}
-                            {pathD && <path d={pathD} fill="none" stroke="#F5C518" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />}
+                            {pathD && <path d={pathD} fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />}
 
                             {/* Interactive dots */}
                             {coords.map((c, i) => (
                               <g key={i} className="group cursor-pointer">
-                                <circle cx={c.x} cy={c.y} r="4" fill="#F5C518" stroke="#1a1815" strokeWidth="1.5" className="chart-dot-pop" style={{ animationDelay: `${0.6 + i * 0.06}s` }} />
-                                <text x={c.x} y={c.y - 8} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#faf8f4" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                <circle cx={c.x} cy={c.y} r="4" fill="#7c3aed" stroke="#ffffff" strokeWidth="1.5" className="chart-dot-pop" style={{ animationDelay: `${0.6 + i * 0.06}s` }} />
+                                <text x={c.x} y={c.y - 8} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#1e1b2e" className="opacity-0 group-hover:opacity-100 transition-opacity">
                                   {c.val}
                                 </text>
                               </g>

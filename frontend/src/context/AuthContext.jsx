@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }) => {
       // provider is configured for this environment (delivery failed/not attempted),
       // so this stops appearing automatically once SMTP/Twilio are set up.
       if (result.devCode) {
-        console.log(`%c[KEE DEV] OTP code for ${identifier}: ${result.devCode}`, 'color:#f0b90b; font-weight:bold; font-size:13px;');
+        console.log(`%c[KEE DEV] OTP code for ${identifier}: ${result.devCode}`, 'color:#4f46e5; font-weight:bold; font-size:13px;');
       }
       return result;
     },
