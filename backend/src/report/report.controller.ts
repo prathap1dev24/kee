@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Request, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Request, UseGuards, BadRequestException } from '@nestjs/common';
 import { ReportService } from './report.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -59,16 +59,6 @@ export class ReportController {
   @Roles(Role.SHOP_ADMIN)
   async getShopDashboard(@Request() req) {
     return this.reportService.getShopDashboard(req.user.shopId);
-  }
-
-  @Get('shop/reports')
-  @Roles(Role.SHOP_ADMIN)
-  async getShopReports(
-    @Request() req,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    return this.reportService.getShopReport(req.user.shopId, startDate, endDate);
   }
 
   @Get('support-config')

@@ -28,11 +28,6 @@ export class CustomerController {
     return this.customerService.getSuperCustomers(search);
   }
 
-  @Get(':id')
-  async getCustomerById(@Request() req, @Param('id') id: string) {
-    return this.customerService.getCustomerById(req.user.shopId, id);
-  }
-
   @Post(':id/docs')
   @UseInterceptors(FileInterceptor('file'))
   async uploadDoc(

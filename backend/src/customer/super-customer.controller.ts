@@ -1,6 +1,6 @@
-import { Controller, Get, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { CustomerService } from './customer.service';
-import { UpdateCustomerDto } from './dto/customer.dto';
+import { UpdateCustomerDto, CreateSuperCustomerDto } from './dto/customer.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -17,9 +17,10 @@ export class SuperCustomerController {
     return this.customerService.getSuperCustomers(search);
   }
 
-  @Get(':id')
-  async getCustomerById(@Param('id') id: string) {
-    return this.customerService.getSuperCustomerById(id);
+  @Post()
+  async createCustomer(@Body() dto: CreateSuperCustomerDto) {
+    const { shopId, ...rest } = dto;
+    return this.customerService.createCustomer(shopId, rest);
   }
 
   @Put(':id')

@@ -20,18 +20,6 @@ export class KeyService {
     });
   }
 
-  // SHOP ADMIN: Create or reuse a key scoped to their own shop (used during customer registration)
-  async createShopKey(shopId: string, dto: CreateKeyDto) {
-    const existing = await this.tenantService.prisma.masterKey.findFirst({
-      where: { shopId, keyNumber: dto.keyNumber },
-    });
-    if (existing) return existing;
-
-    return this.tenantService.prisma.masterKey.create({
-      data: { ...dto, shopId },
-    });
-  }
-
   // SUPER ADMIN: Update Master Key
   async updateKey(id: string, dto: UpdateKeyDto) {
     const existing = await this.tenantService.prisma.masterKey.findUnique({ where: { id } });

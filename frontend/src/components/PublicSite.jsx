@@ -173,7 +173,7 @@ function HomePage({ onNavigate }) {
   const blobB = useParallax(-0.12);
 
   const features = [
-    { icon: Users, title: 'Customer Management', desc: 'Capture ID proof, photo, signature and key history for every walk-in, searchable in seconds.' },
+    { icon: Users, title: 'Customer Management', desc: 'Capture ID proof, photo and key history for every walk-in, searchable in seconds.' },
     { icon: Key, title: 'Key & Master Catalog', desc: 'Track every blank, master key and duplicate against a shop-wide catalog that never loses a key.' },
     { icon: Package, title: 'Store & Inventory', desc: 'Sell hardware alongside key services and keep stock levels accurate automatically.' },
     { icon: BarChart3, title: 'Reports & Analytics', desc: 'Daily, weekly and monthly rollups of revenue, footfall and top-selling items.' },

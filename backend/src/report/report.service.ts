@@ -250,65 +250,6 @@ export class ReportService {
     };
   }
 
-  // ==========================================
-  // SHOP ADMIN REPORTS DATA
-  // ==========================================
-  async getShopReport(shopId: string, startDate?: string, endDate?: string) {
-    const whereClause: any = { shopId };
-    if (startDate || endDate) {
-      whereClause.createdAt = {};
-      if (startDate) whereClause.createdAt.gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        whereClause.createdAt.lte = end;
-      }
-    }
-
-    const customers = await this.tenantService.prisma.customer.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'asc' },
-      include: { documents: { where: { deletedAt: null } } },
-    });
-
-    // Grouping by date for analytics charts
-    const dateGroups: { [key: string]: number } = {};
-    const keyGroups: { [key: string]: number } = {};
-
-    customers.forEach(c => {
-      const dateStr = c.createdAt.toISOString().split('T')[0];
-      dateGroups[dateStr] = (dateGroups[dateStr] || 0) + 1;
-      keyGroups[c.keyNumber] = (keyGroups[c.keyNumber] || 0) + 1;
-    });
-
-    const dailyStats = Object.keys(dateGroups).map(date => ({
-      date,
-      count: dateGroups[date],
-    }));
-
-    const keyStats = Object.keys(keyGroups).map(keyNumber => ({
-      keyNumber,
-      count: keyGroups[keyNumber],
-    }));
-
-    return {
-      customers: customers.map(c => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        keyNumber: c.keyNumber,
-        reason: c.reason,
-        idProofType: c.idProofType,
-        hasPhoto: !!c.photoUrl,
-        hasSignature: !!c.signatureUrl,
-        documentsCount: c.documents.length,
-        createdAt: c.createdAt,
-      })),
-      dailyStats,
-      keyStats,
-    };
-  }
-
   async getSupportConfig() {
     const config = await this.tenantService.prisma.platformConfig.findUnique({
       where: { id: 'default' },

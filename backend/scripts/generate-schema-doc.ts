@@ -166,7 +166,7 @@ const TABLES: TableDef[] = [
       { name: 'latitude / longitude', type: 'Float?', attrs: 'nullable' },
       { name: 'mapsLink', type: 'String?', attrs: 'nullable' },
       { name: 'capturedAddress', type: 'String?', attrs: 'nullable' },
-      { name: 'photoUrl / signatureUrl', type: 'String?', attrs: 'nullable' },
+      { name: 'photoUrl', type: 'String?', attrs: 'nullable' },
       { name: 'deletedAt', type: 'DateTime?', attrs: 'soft delete marker' },
       { name: 'createdAt', type: 'DateTime', attrs: 'default now()' },
       { name: 'updatedAt', type: 'DateTime', attrs: 'auto-updated' },

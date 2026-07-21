@@ -188,7 +188,6 @@ export const AuthProvider = ({ children }) => {
     createShop: async (dto) => request('/api/super/shops', 'POST', dto),
     updateShop: async (id, dto) => request(`/api/super/shops/${id}`, 'PUT', dto),
     suspendShop: async (id, isActive) => request(`/api/super/shops/${id}/suspend`, 'POST', { isActive }),
-    resetAdminPassword: async (shopId, newPassword) => request(`/api/super/shops/${shopId}/reset-password`, 'POST', { newPassword }),
     updateSubscription: async (shopId, dto) => request(`/api/super/subscriptions/${shopId}`, 'POST', dto),
 
     // --- MASTER KEYS (shop-scoped for Shop Admin, all-shops for Super Admin) ---
@@ -202,16 +201,12 @@ export const AuthProvider = ({ children }) => {
     // Super Admin: create a global catalog key (not tied to a shop)
     createMasterKey: async (dto) => request('/api/super/keys', 'POST', dto),
 
-    // Shop Admin: create/reuse a key scoped to their own shop (used during customer registration)
-    createShopKey: async (dto) => request('/api/shop/keys', 'POST', dto),
-
     updateMasterKey: async (id, dto) => request(`/api/super/keys/${id}`, 'PUT', dto),
     deleteMasterKey: async (id) => request(`/api/super/keys/${id}`, 'DELETE'),
 
     // --- SHOP ADMIN: CUSTOMERS ---
     getCustomers: async (search = '') => request(`/api/shop/customers?search=${search}`),
     getGlobalCustomersForSearch: async (search = '') => request(`/api/shop/customers/global-search?search=${search}`),
-    getCustomerById: async (id) => request(`/api/shop/customers/${id}`),
     createCustomer: async (dto) => request('/api/shop/customers', 'POST', dto),
     updateCustomer: async (id, dto) => request(`/api/shop/customers/${id}`, 'PUT', dto),
 
@@ -281,7 +276,7 @@ export const AuthProvider = ({ children }) => {
 
     // --- SUPER CUSTOMERS ---
     getSuperCustomers: async (search = '') => request(`/api/super/customers?search=${search}`),
-    getSuperCustomerById: async (id) => request(`/api/super/customers/${id}`),
+    createSuperCustomer: async (dto) => request('/api/super/customers', 'POST', dto),
     updateSuperCustomer: async (id, dto) => request(`/api/super/customers/${id}`, 'PUT', dto),
 
     getPlanPrices: async () => {
@@ -305,14 +300,6 @@ export const AuthProvider = ({ children }) => {
 
     getSupportConfig: async () => request('/api/support-config'),
     updateSupportConfig: async (dto) => request('/api/super/support-config', 'POST', dto),
-
-    getReports: async (startDate, endDate) => {
-      let url = `/api/shop/reports`;
-      if (startDate || endDate) {
-        url += `?startDate=${startDate || ''}&endDate=${endDate || ''}`;
-      }
-      return request(url);
-    }
   };
 
   return (

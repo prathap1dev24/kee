@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsEnum, IsBoolean, IsHexColor, IsDateString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEnum, IsBoolean, IsHexColor, IsDateString } from 'class-validator';
 import { Plan, SubscriptionStatus } from '@prisma/client';
 
 export class CreateShopDto {
@@ -115,11 +115,4 @@ export class ManageSubscriptionDto {
   @IsDateString()
   @IsNotEmpty({ message: 'End date is required' })
   endDate: string;
-}
-
-export class ResetPasswordDto {
-  @IsString()
-  @IsNotEmpty({ message: 'New password is required' })
-  @MinLength(6, { message: 'Password must be at least 6 characters long' })
-  newPassword: string;
 }

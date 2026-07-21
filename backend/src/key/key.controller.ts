@@ -48,10 +48,4 @@ export class KeyController {
   async shopSearchKeys(@Request() req, @Query('query') query?: string) {
     return this.keyService.getShopKeys(req.user.shopId, query);
   }
-
-  @Post('shop/keys')
-  @Roles(Role.SHOP_ADMIN)
-  async createShopKey(@Request() req, @Body() dto: CreateKeyDto) {
-    return this.keyService.createShopKey(req.user.shopId, dto);
-  }
 }

@@ -141,26 +141,6 @@ export class ShopService {
     });
   }
 
-  // SUPER ADMIN: Reset Password for Shop Admin
-  async resetAdminPassword(shopId: string, newPasswordStr: string) {
-    const adminUser = await this.tenantService.prisma.user.findFirst({
-      where: { shopId, role: Role.SHOP_ADMIN },
-    });
-    if (!adminUser) {
-      throw new NotFoundException('No Admin User found for this shop');
-    }
-
-    const salt = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(newPasswordStr, salt);
-
-    await this.tenantService.prisma.user.update({
-      where: { id: adminUser.id },
-      data: { passwordHash },
-    });
-
-    return { success: true, message: 'Password reset successfully' };
-  }
-
   // SUPER ADMIN: Manage Subscriptions
   async updateSubscription(shopId: string, dto: ManageSubscriptionDto) {
     const shop = await this.tenantService.prisma.shop.findUnique({ where: { id: shopId } });

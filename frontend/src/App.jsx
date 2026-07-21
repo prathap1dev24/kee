@@ -5,18 +5,19 @@ import { useAuth } from './context/AuthContext';
 import { getAssetUrl, downloadAsset } from './apiConfig';
 import PublicSite from './components/PublicSite';
 import {
-  Key, Users, Shield, Radio, Activity, BarChart3, Database, LogOut, Check, X,
+  Key, Users, Shield, Radio, BarChart3, Database, LogOut, Check, X,
   Plus, Settings, FileText, Search, UserCheck, MapPin, Camera, AlertTriangle,
-  RotateCcw, Trash, RefreshCw, Layers, Edit, ExternalLink, Sliders, DollarSign,
-  Bell, Eye, EyeOff, Truck, CheckCircle2, ChevronRight, Info,
+  Trash, RefreshCw, Layers, Edit, ExternalLink, Sliders, DollarSign,
+  Bell, Eye, EyeOff, CheckCircle2, ChevronRight, Info,
   CreditCard, QrCode, Wallet, Lock, ShieldCheck, Upload, Mail, Phone,
   ArrowRight, ArrowLeft, Building2, Calendar,
   Store, TrendingUp, TrendingDown, UserPlus, Clock, IndianRupee, BadgeCheck,
   ArrowUpRight, ArrowDownRight, Sparkles, HardDrive,
-  User, Hash, UploadCloud, PenLine, Crosshair, FileCheck, Navigation, KeyRound, Car,
+  User, Hash, UploadCloud, Crosshair, FileCheck, Navigation, KeyRound, Car,
   Tag, Package, Boxes, Percent, Image as ImageIcon, Megaphone, BadgePercent,
   Receipt, CalendarRange, Banknote, PlayCircle, MessageCircle, LifeBuoy,
-  Download, Fingerprint, Palette, Menu, Home, Languages
+  Download, Fingerprint, Palette, Menu, Home, Languages,
+  Wrench, Cpu, Gauge, ScanLine
 } from 'lucide-react';
 
 export function cleanGoogleImageUrl(url) {
@@ -476,6 +477,17 @@ const SEARCH_TYPE_OPTIONS = [
   { value: 'key', label: 'Key', icon: KeyRound },
 ];
 
+// Icon + label shown on each row of the global search "results overview"
+// list, keyed by the entity type of that result (see the multi-entity
+// search effect below). Every entity type the global search can return
+// must have an entry here.
+const GLOBAL_SEARCH_RESULT_META = {
+  customer: { label: 'Customer', icon: Users },
+  key: { label: 'Key', icon: KeyRound },
+  shop: { label: 'Shop', icon: Store },
+  product: { label: 'Product', icon: Tag },
+};
+
 // True only when running inside the native Android/iOS shell (Capacitor),
 // never in a regular desktop/mobile browser. Used to skip the marketing
 // landing page (PublicSite) for the packaged app and drop straight into the
@@ -506,55 +518,149 @@ export default function App() {
   }, [isAuthenticated, user?.role]);
 
   // Global header search: replaces the plain page-title label with a
-  // functional search box + category filter. It's a *live* search - every
-  // keystroke (and every filter-type change) instantly routes to whichever
-  // existing screen owns that kind of data and hands it the query via
-  // `searchDispatch` (a small {query, type, nonce} object - the nonce lets
-  // the exact same query re-trigger the receiving screen's own search effect
-  // even when the string itself didn't change, e.g. only the type changed).
-  // No Enter key / submit button is required.
+  // functional search box + category filter. Typing never navigates away by
+  // itself - regardless of which "search by" filter is selected, every
+  // keystroke (debounced) queries every searchable entity type in parallel
+  // (customers, keys, shops, inventory products) and renders a "results
+  // overview" dropdown right under the search box. The selected filter no
+  // longer restricts *what* is searched (per product requirement: "regardless
+  // of the selected filter... return all relevant results") - it's kept only
+  // as a UX hint (placeholder text / icon). Navigation to the owning screen
+  // happens only when the user taps one specific result, via the same
+  // `searchDispatch` ({query, type, nonce}) hand-off screens already listen
+  // for, seeded with that result's own identifying text so the destination
+  // screen lands pre-filtered to just that record.
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [globalSearchType, setGlobalSearchType] = useState('all');
+  const [globalSearchResults, setGlobalSearchResults] = useState([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
   const [searchDispatch, setSearchDispatch] = useState(null);
   const [searchTypeMenuOpen, setSearchTypeMenuOpen] = useState(false);
 
   useEffect(() => {
     // The global search box only exists on the Dashboard (see the header
-    // JSX below), so this is a one-shot "jump to the right screen" action,
-    // not a live sync with that screen's own search field. As soon as a
-    // query is typed we hand it off via `searchDispatch` and clear our own
-    // copy - the destination screen takes over with its own, fully
-    // independent search state from that point on, so nothing typed there
-    // (or on any other page) ever feeds back into this box or any other
-    // page's search.
+    // JSX below).
     if (activeTab !== 'dashboard') return;
     const query = globalSearchQuery.trim();
-    if (!query) return;
-
-    // "Anything" (the default filter) has no single, unambiguous destination
-    // screen, so it must never auto-navigate away from the Dashboard - it
-    // stays a purely local, in-page search. Only an explicitly-picked
-    // category (Customer / Product Type / Location / Key) is a deliberate
-    // enough signal to jump to that category's own screen.
-    if (globalSearchType === 'all') return;
-
-    const isSuper = user?.role === 'SUPER_ADMIN';
-    let targetTab;
-    if (globalSearchType === 'customer') {
-      targetTab = isSuper ? 'super-customers' : 'history';
-    } else if (globalSearchType === 'key') {
-      targetTab = isSuper ? 'keys' : 'search-keys';
-    } else {
-      // 'productType' | 'location' - both live in the cross-shop Inventory feed.
-      targetTab = 'promotions';
+    if (query.length < 2) {
+      setGlobalSearchResults([]);
+      setGlobalSearchLoading(false);
+      return;
     }
 
-    setSearchDispatch({ query, type: globalSearchType, nonce: Date.now() });
+    const isSuper = user?.role === 'SUPER_ADMIN';
+    const q = query.toLowerCase();
+    let cancelled = false;
+    setGlobalSearchLoading(true);
+
+    const timer = setTimeout(() => {
+      const tasks = [];
+
+      // Customers - server-side filtered by name/phone/etc.
+      tasks.push(
+        (isSuper ? api.getSuperCustomers(query) : api.getCustomers(query))
+          .then(list => (list || []).map(c => ({
+            type: 'customer',
+            key: `customer-${c.id}`,
+            title: c.name,
+            line2: c.phone,
+            line3: isSuper ? (c.shop?.name || '') : '',
+            searchTerm: c.phone || c.name,
+          })))
+          .catch(() => [])
+      );
+
+      // Master keys - server-side filtered by keyNumber/brand/category.
+      tasks.push(
+        api.getMasterKeys(query)
+          .then(list => (list || []).map(k => ({
+            type: 'key',
+            key: `key-${k.id}`,
+            title: k.keyNumber,
+            line2: [k.brand, k.category].filter(Boolean).join(' \u2022 '),
+            line3: k.shop?.name || (!isSuper ? (shopDisplayName || '') : ''),
+            searchTerm: k.keyNumber,
+          })))
+          .catch(() => [])
+      );
+
+      // Shops - Super Admin only, filtered client-side (no search param on this endpoint).
+      if (isSuper) {
+        tasks.push(
+          api.getShops()
+            .then(list => (list || [])
+              .filter(s => (s.name || '').toLowerCase().includes(q))
+              .map(s => {
+                let phone = '';
+                try { phone = s.companyDetails ? (JSON.parse(s.companyDetails).phone || '') : ''; } catch (e) {}
+                return {
+                  type: 'shop',
+                  key: `shop-${s.id}`,
+                  title: s.name,
+                  // The Shop model has no shopCode/slug field - fall back to a
+                  // short, stable ID fragment as the secondary identifier.
+                  line2: `ID: ${s.id.slice(0, 8).toUpperCase()}`,
+                  line3: phone,
+                  searchTerm: s.name,
+                };
+              }))
+            .catch(() => [])
+        );
+      }
+
+      // Inventory products (cross-shop promotions feed), filtered client-side.
+      tasks.push(
+        api.getPromotions()
+          .then(list => (list || [])
+            .filter(p => p.type === 'PRODUCT' &&
+              ((p.title || '').toLowerCase().includes(q) || (p.productType || '').toLowerCase().includes(q)))
+            .map(p => ({
+              type: 'product',
+              key: `product-${p.id}`,
+              title: p.title,
+              line2: p.productType || '',
+              line3: p.shop?.name || '',
+              searchTerm: p.title,
+            })))
+          .catch(() => [])
+      );
+
+      Promise.all(tasks).then(settled => {
+        if (cancelled) return;
+        setGlobalSearchResults(settled.flat());
+        setGlobalSearchLoading(false);
+      });
+    }, 350);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalSearchQuery, activeTab, user?.role]);
+
+  // Fired only when the user taps a specific row in the results overview -
+  // this is the sole point where global search causes navigation.
+  const handleGlobalSearchResultClick = (result) => {
+    const isSuper = user?.role === 'SUPER_ADMIN';
+    let targetTab;
+    let dispatchType;
+    if (result.type === 'customer') {
+      targetTab = isSuper ? 'super-customers' : 'history';
+      dispatchType = 'customer';
+    } else if (result.type === 'key') {
+      targetTab = isSuper ? 'keys' : 'search-keys';
+      dispatchType = 'key';
+    } else if (result.type === 'shop') {
+      targetTab = 'shops';
+      dispatchType = 'shop';
+    } else {
+      targetTab = 'promotions';
+      dispatchType = 'all';
+    }
+    setSearchDispatch({ query: result.searchTerm || result.title, type: dispatchType, nonce: Date.now() });
     setActiveTab(targetTab);
     setGlobalSearchQuery('');
+    setGlobalSearchResults([]);
     setSearchTypeMenuOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalSearchQuery, globalSearchType, activeTab]);
+  };
 
   const PAGE_TITLES = {
     dashboard: t('dashboard'),
@@ -639,11 +745,12 @@ export default function App() {
   const [regWhatsapp, setRegWhatsapp] = useState('');
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [regLocation, setRegLocation] = useState('');
+  const [regLocLoading, setRegLocLoading] = useState(false);
   const [regPassword, setRegPassword] = useState('');
   const [regPlan, setRegPlan] = useState('MONTHLY'); // 'MONTHLY' | 'HALF_YEARLY' | 'YEARLY'
   const [regError, setRegError] = useState('');
   const [regSuccessMessage, setRegSuccessMessage] = useState('');
-  const [regStep, setRegStep] = useState(1); // 1: Info, 2: OTP, 3: Password & Plan, 4: Payment
+  const [regStep, setRegStep] = useState(1); // 1: Info, 2: OTP, 3: Password & Plan, 4: Review, 5: Payment
 
   // Self-Registration OTP states
   const [regOtpSent, setRegOtpSent] = useState(false);
@@ -801,6 +908,43 @@ export default function App() {
     }
   };
 
+  // "Current Location" button for the Shop Registration wizard - captures the
+  // device's real GPS position and reverse-geocodes it into the free-text
+  // location field. The field stays a normal editable input afterwards, so
+  // the shop owner can correct/refine whatever gets auto-filled here.
+  const captureShopLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported on this device.');
+      return;
+    }
+    setRegLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        try {
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+          if (res.ok) {
+            const data = await res.json();
+            const parts = [data.locality, data.city, data.principalSubdivision].filter(Boolean);
+            if (parts.length > 0) {
+              setRegLocation(parts.join(', '));
+              setRegLocLoading(false);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Reverse geocoding failed:', e);
+        }
+        setRegLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        setRegLocLoading(false);
+      },
+      () => {
+        setRegLocLoading(false);
+        alert('Unable to fetch current location. Please allow location access or enter the address manually.');
+      }
+    );
+  };
+
   const handleRegCheckout = async (e) => {
     e.preventDefault();
     setRegPayProcessing(true);
@@ -849,6 +993,7 @@ export default function App() {
     setRegWhatsapp('');
     setSameAsPhone(false);
     setRegLocation('');
+    setRegLocLoading(false);
     setRegPassword('');
     setRegPlan('MONTHLY');
     setRegError('');
@@ -1257,7 +1402,9 @@ export default function App() {
               <ChevronRight className="h-3 w-3" style={{ color: 'var(--text-3)' }} />
               <span style={{ color: regStep === 3 ? 'var(--gold)' : 'var(--text-3)', fontWeight: 800, fontFamily: 'var(--display)' }}>3. Subscription</span>
               <ChevronRight className="h-3 w-3" style={{ color: 'var(--text-3)' }} />
-              <span style={{ color: regStep === 4 ? 'var(--gold)' : 'var(--text-3)', fontWeight: 800, fontFamily: 'var(--display)' }}>4. Payment</span>
+              <span style={{ color: regStep === 4 ? 'var(--gold)' : 'var(--text-3)', fontWeight: 800, fontFamily: 'var(--display)' }}>4. Review</span>
+              <ChevronRight className="h-3 w-3" style={{ color: 'var(--text-3)' }} />
+              <span style={{ color: regStep === 5 ? 'var(--gold)' : 'var(--text-3)', fontWeight: 800, fontFamily: 'var(--display)' }}>5. Payment</span>
             </div>
 
             {regError && (
@@ -1342,7 +1489,19 @@ export default function App() {
                   </div>
 
                   <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Shop location details</label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label style={{ marginBottom: 0 }}>Shop location details</label>
+                      <button
+                        type="button"
+                        onClick={captureShopLocation}
+                        disabled={regLocLoading}
+                        className="flex items-center gap-1 cursor-pointer select-none"
+                        style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0 }}
+                      >
+                        <Crosshair className={regLocLoading ? 'animate-spin' : ''} style={{ width: 12, height: 12 }} />
+                        <span>{regLocLoading ? 'Locating…' : 'Current Location'}</span>
+                      </button>
+                    </div>
                     <div className="input-wrap">
                       <MapPin />
                       <input
@@ -1565,14 +1724,59 @@ export default function App() {
                     }}
                     className="btn btn-primary"
                   >
-                    Proceed to checkout <ArrowRight />
+                    Review details <ArrowRight />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 4: Payment Checkout */}
+            {/* STEP 4: Review - confirm everything entered so far before paying */}
             {regStep === 4 && (
+              <div className="animate-fade-in">
+                <h3 style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--display)', marginBottom: 4 }}>Review your details</h3>
+                <p style={{ fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600, marginBottom: 18 }}>Confirm everything below is correct before proceeding to payment.</p>
+
+                <div className="form-grid" style={{ paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid var(--border)' }}>
+                  <div className="field"><label>Shop Name</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regShopName}</div></div>
+                  <div className="field"><label>Owner Name</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regOwnerName}</div></div>
+                  <div className="field"><label>Email</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regEmail}</div></div>
+                  <div className="field"><label>Phone</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regPhone}</div></div>
+                  <div className="field"><label>WhatsApp</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regWhatsapp}</div></div>
+                  <div className="field full"><label>Shop Location</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regLocation}</div></div>
+                </div>
+
+                <div className="form-grid" style={{ paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid var(--border)' }}>
+                  <div className="field"><label>Subscription Plan</label><div style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 14 }}>{regPlan === 'MONTHLY' ? 'Monthly (Rs. 49)' : regPlan === 'HALF_YEARLY' ? '6 Months (Rs. 269)' : 'Yearly (Rs. 499)'}</div></div>
+                  <div className="field"><label>Account Password</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>&bull;&bull;&bull;&bull;&bull;&bull; (set)</div></div>
+                </div>
+
+                <span className="side-section-label" style={{ padding: 0, display: 'block', marginBottom: 10 }}>Uploaded documents</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3" style={{ marginBottom: 6 }}>
+                  {[
+                    { label: 'Shop photo', value: regShopPhoto },
+                    { label: 'Shop license', value: regShopLicense },
+                    { label: 'Owner Aadhaar', value: regOwnerAadhaar },
+                  ].map(doc => (
+                    <div key={doc.label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 12, padding: '10px 12px' }}>
+                      {doc.value ? <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--green)', flexShrink: 0 }} /> : <AlertTriangle className="h-4 w-4" style={{ color: 'var(--amber)', flexShrink: 0 }} />}
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-1)' }}>{doc.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 20 }}>
+                  <button type="button" onClick={() => setRegStep(3)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back
+                  </button>
+                  <button type="button" onClick={() => setRegStep(5)} className="btn btn-primary">
+                    Continue to payment <ArrowRight />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: Payment Checkout */}
+            {regStep === 5 && (
               <form onSubmit={handleRegCheckout} className="animate-fade-in relative overflow-hidden">
                 {regPayProcessing && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4" style={{ background: 'rgba(10,9,8,0.92)', zIndex: 20 }}>
@@ -1666,7 +1870,7 @@ export default function App() {
                 )}
 
                 <div className="flex gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
-                  <button type="button" onClick={() => setRegStep(3)} className="btn btn-ghost" style={{ flex: 1 }}>
+                  <button type="button" onClick={() => setRegStep(4)} className="btn btn-ghost" style={{ flex: 1 }}>
                     Back
                   </button>
                   <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
@@ -1684,18 +1888,27 @@ export default function App() {
         )
       ) : (
         <div className="min-h-[calc(100vh-40px)] flex flex-col md:flex-row">
-          {/* Mobile nav backdrop */}
+          {/* Mobile nav backdrop - must sit above every other fixed/sticky
+              mobile chrome (header, bottom nav, floating buttons), so it's
+              pinned to an explicit z-index well above the highest value used
+              anywhere else in the app (see .mobile-nav-drawer-backdrop /
+              .mobile-nav-drawer in index.css). Tapping it closes the drawer. */}
           {mobileNavOpen && (
             <div
-              className="fixed inset-0 z-40 md:hidden"
+              className="mobile-nav-drawer-backdrop fixed inset-0 md:hidden"
               style={{ background: 'rgba(5,4,3,0.7)' }}
               onClick={() => setMobileNavOpen(false)}
             />
           )}
 
-          {/* SIDEBAR NAVIGATION */}
+          {/* SIDEBAR NAVIGATION - on mobile this is a full-screen overlay
+              drawer (see .mobile-nav-drawer in index.css for the z-index
+              that guarantees it always renders above the header, page
+              content, floating buttons and bottom nav bar). Closes when a
+              menu item is tapped (delegated onClick below) or when the
+              backdrop above is tapped. */}
           <aside
-            className={`sidebar w-[82%] max-w-[320px] md:w-64 flex flex-col shrink-0 fixed md:static inset-y-0 left-0 z-50 md:z-auto transition-transform duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+            className={`sidebar mobile-nav-drawer w-[82%] max-w-[320px] md:w-64 flex flex-col shrink-0 fixed md:static inset-y-0 left-0 md:z-auto transition-transform duration-300 ${mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
             style={{ overflowY: 'auto' }}
           >
             <div className="brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1951,6 +2164,54 @@ export default function App() {
                         placeholder={`Search by ${globalSearchType === 'all' ? 'anything' : globalSearchType === 'productType' ? 'product type' : globalSearchType}\u2026`}
                       />
                     </div>
+
+                    {/* Results overview - appears under the search box for any
+                        query of 2+ characters, listing matches across every
+                        entity type. Nothing here navigates until a specific
+                        row is tapped. */}
+                    {globalSearchQuery.trim().length >= 2 && (
+                      <>
+                        <div className="search-type-backdrop" onClick={() => setGlobalSearchQuery('')} />
+                        <div className="global-search-results card animate-fade-in">
+                          {globalSearchLoading ? (
+                            <div className="global-search-results-status">
+                              <RefreshCw className="animate-spin h-3.5 w-3.5" />
+                              <span>Searching…</span>
+                            </div>
+                          ) : globalSearchResults.length === 0 ? (
+                            <div className="global-search-results-status">
+                              <span>No matching records found</span>
+                            </div>
+                          ) : (
+                            <div className="global-search-results-list">
+                              {globalSearchResults.map(r => {
+                                const meta = GLOBAL_SEARCH_RESULT_META[r.type];
+                                const ResultIcon = meta.icon;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={r.key}
+                                    className="global-search-result-item"
+                                    onClick={() => handleGlobalSearchResultClick(r)}
+                                  >
+                                    <div className="icon-badge" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                                      <ResultIcon className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <div className="global-search-result-title truncate">{r.title || '—'}</div>
+                                      <div className="global-search-result-sub truncate">
+                                        {[r.line2, r.line3].filter(Boolean).join(' \u00b7 ')}
+                                      </div>
+                                    </div>
+                                    <span className="global-search-result-type-tag">{meta.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   // No search panel on this screen - fill the otherwise-empty
@@ -2052,8 +2313,8 @@ export default function App() {
               </div>
             </header>
 
-            {activeTab === 'dashboard' && <DashboardView t={t} setActiveTab={setActiveTab} setAutoOpenShopModal={setAutoOpenShopModal} />}
-            {activeTab === 'shops' && <ShopsManagementView t={t} api={api} initiallyOpenAddModal={autoOpenShopModal} onCloseInitiallyOpen={() => setAutoOpenShopModal(false)} />}
+            {activeTab === 'dashboard' && <DashboardView t={t} setActiveTab={setActiveTab} setAutoOpenShopModal={setAutoOpenShopModal} setSearchDispatch={setSearchDispatch} />}
+            {activeTab === 'shops' && <ShopsManagementView t={t} api={api} initiallyOpenAddModal={autoOpenShopModal} onCloseInitiallyOpen={() => setAutoOpenShopModal(false)} searchDispatch={searchDispatch} />}
             {activeTab === 'super-customers' && <SuperCustomersView t={t} api={api} searchDispatch={activeTab === 'super-customers' ? searchDispatch : null} />}
             {activeTab === 'keys' && <KeysCatalogView t={t} api={api} searchDispatch={activeTab === 'keys' ? searchDispatch : null} />}
             {activeTab === 'pricing-offers' && <PricingOffersView t={t} api={api} />}
@@ -2163,12 +2424,59 @@ export default function App() {
 // ============================================================================
 // COMPONENT 1: DASHBOARD VIEW WITH INTERACTIVE CARD DETAILS
 // ============================================================================
-function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
+// Product-type shortcut cards shown on both the Shop Admin and Super Admin
+// dashboards. `type` values must exactly match entries in PRODUCT_TYPES (see
+// PromotionsFeed below) so tapping a card can route straight into the
+// Inventory screen pre-filtered to that category via searchDispatch.
+const DASHBOARD_PRODUCT_CARDS = [
+  { type: 'Used Machines', icon: Wrench, description: 'View and manage used machines' },
+  { type: 'ECM Service', icon: Cpu, description: 'Manage ECM service records' },
+  { type: 'Meter Service', icon: Gauge, description: 'Track and manage meter services' },
+  { type: 'Scanning Service', icon: ScanLine, description: 'Scan & process compliance entries' },
+];
+
+// Generic 2-column "info card" grid used across the dashboards - an icon
+// badge top-left, a bold title, and a short description underneath. Used for
+// the product-type shortcuts, the shop-admin quick actions, and the
+// subscription/inventory shortcuts so all of these read as one consistent
+// card language.
+function DashCardGrid({ items }) {
+  return (
+    <div className="dash-card-grid">
+      {items.map((item, idx) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.title}
+            type="button"
+            className="dash-card animate-fade-in"
+            style={{ animationDelay: `${idx * 0.05}s` }}
+            onClick={item.onClick}
+          >
+            <div className={`icon-badge${item.iconVariant ? ` ${item.iconVariant}` : ''}`}><Icon /></div>
+            <div className="dash-card-title">{item.title}</div>
+            <div className="dash-card-desc">{item.description}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DashboardView({ t, setActiveTab, setAutoOpenShopModal, setSearchDispatch }) {
   const { user, api } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeDetail, setActiveDetail] = useState(null); // Interactive details drawer
   const [activePopupAd, setActivePopupAd] = useState(null);
+
+  // Tapping a product-type card jumps to the Inventory screen and
+  // auto-filters it to that category - reuses the same searchDispatch
+  // mechanism the global header search uses (see the App component).
+  const goToProductType = (productType) => {
+    setSearchDispatch({ query: productType, type: 'productType', nonce: Date.now() });
+    setActiveTab('promotions');
+  };
 
   useEffect(() => {
     if (activePopupAd) {
@@ -2254,6 +2562,9 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
             </button>
           </div>
         </div>
+
+        {/* Product Category Shortcuts - tap to jump to Inventory pre-filtered by type */}
+        <DashCardGrid items={DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, onClick: () => goToProductType(c.type) }))} />
 
         {/* Stats Grid with Expandable Interactions */}
         <div className="stat-grid">
@@ -2470,13 +2781,6 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
             <p>{data.shop ? data.shop.name : `${t('shopTerminal')} Workspace`} — compliance &amp; inventory terminal</p>
           </div>
         </div>
-        <div className="dash-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={fetchDashboardData} className="icon-btn" title="Refresh"><RefreshCw /></button>
-          <button onClick={() => setActiveTab('register')} className="btn btn-primary">
-            <UserPlus />
-            <span>Register Customer</span>
-          </button>
-        </div>
       </div>
 
       {sub && sub.daysRemaining <= 7 && (
@@ -2497,8 +2801,17 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
         </div>
       )}
 
+      {/* Product Category Shortcuts - tap to jump to Inventory pre-filtered by type */}
+      <DashCardGrid items={DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, onClick: () => goToProductType(c.type) }))} />
+
+      {/* Quick Actions */}
+      <DashCardGrid items={[
+        { title: 'New Customer', description: 'Register a compliance entry for new customer', icon: UserPlus, onClick: () => setActiveTab('register') },
+        { title: 'Search Keys', description: 'Find and digitize key records quickly', icon: Search, onClick: () => setActiveTab('search-keys') },
+      ]} />
+
       {/* Shop KPI Cards */}
-      <div className="stat-grid three">
+      <div className="stat-grid two">
         <div
           onClick={() => toggleDetail('today')}
           className="stat-card"
@@ -2506,7 +2819,6 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
         >
           <div className="stat-top">
             <div className="icon-badge green"><UserPlus /></div>
-            <ChevronRight style={{ width: 16, height: 16, color: 'var(--text-3)', transform: activeDetail === 'today' ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
           </div>
           <div className="stat-num"><CountUp value={data.todayCustomers} /></div>
           <div className="stat-label">Today's Registrations</div>
@@ -2519,25 +2831,24 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
         >
           <div className="stat-top">
             <div className="icon-badge"><Users /></div>
-            <ChevronRight style={{ width: 16, height: 16, color: 'var(--text-3)', transform: activeDetail === 'total' ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
           </div>
           <div className="stat-num"><CountUp value={data.totalCustomers} /></div>
           <div className="stat-label">Total Customers</div>
         </div>
-
-        <div
-          onClick={() => toggleDetail('subscription')}
-          className="stat-card"
-          style={{ animationDelay: '0.25s', cursor: 'pointer', ...(activeDetail === 'subscription' ? { borderColor: 'rgba(240,185,11,0.5)' } : {}) }}
-        >
-          <div className="stat-top">
-            <div className="icon-badge"><ShieldCheck /></div>
-            <ChevronRight style={{ width: 16, height: 16, color: 'var(--text-3)', transform: activeDetail === 'subscription' ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
-          </div>
-          <div className="stat-num" style={{ fontSize: 22 }}>{sub ? sub.plan : 'No Active Plan'}</div>
-          <div className="stat-label">Terminal Subscription</div>
-        </div>
       </div>
+
+      {/* Terminal Subscription / Inventory Shortcuts */}
+      <DashCardGrid items={[
+        {
+          title: 'Terminal Subscription',
+          description: sub
+            ? `${sub.plan.replace(/_/g, ' ')} plan • ${sub.daysRemaining > 0 ? `${sub.daysRemaining} days left` : 'Expired'} • Ends ${new Date(sub.endDate).toLocaleDateString()}`
+            : 'No active subscription — contact KEE Super Admin',
+          icon: ShieldCheck,
+          onClick: () => toggleDetail('subscription'),
+        },
+        { title: 'Inventory', description: 'Browse and manage inventory products', icon: Boxes, onClick: () => setActiveTab('promotions') },
+      ]} />
 
       {/* Expandable Details Box */}
       {activeDetail && (
@@ -2560,43 +2871,21 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
               Lifetime duplicate key compliance logs recorded at this terminal: <b style={{ color: 'var(--text-0)' }}>{data.totalCustomers} entries</b>.
             </p>
           )}
-          {activeDetail === 'subscription' && sub && (
+          {activeDetail === 'subscription' && (
             <p style={{ fontSize: 13.5, color: 'var(--text-2)', fontWeight: 600 }}>
-              Subscription expires on <b style={{ color: 'var(--text-0)' }}>{new Date(sub.endDate).toLocaleDateString()}</b> ({sub.daysRemaining} days remaining).
+              {sub
+                ? <>Plan <b style={{ color: 'var(--text-0)' }}>{sub.plan}</b> — expires on <b style={{ color: 'var(--text-0)' }}>{new Date(sub.endDate).toLocaleDateString()}</b> ({sub.daysRemaining} days remaining).</>
+                : 'No active subscription. Please coordinate renewal with KEE Super Admin.'}
             </p>
           )}
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="quick-actions">
-        <button className="qa-btn" onClick={() => setActiveTab('register')}>
-          <div className="icon-badge"><UserPlus /></div>
-          <div>
-            <span>New Customer</span>
-            <small>Register a compliance entry</small>
-          </div>
-        </button>
-        <button className="qa-btn" onClick={() => setActiveTab('search-keys')}>
-          <div className="icon-badge"><Search /></div>
-          <div>
-            <span>Search Keys</span>
-            <small>Find a duplicate key record</small>
-          </div>
-        </button>
-        <button className="qa-btn" onClick={() => setActiveTab('promotions')}>
-          <div className="icon-badge"><Megaphone /></div>
-          <div>
-            <span>Inventory</span>
-            <small>Browse inventory products</small>
-          </div>
-        </button>
-      </div>
-
       <div className="grid-2">
         <div className="card">
           <div className="section-title">
             <h2>Recent Compliance Registrations</h2>
+            <button onClick={() => setActiveTab('history')} className="btn btn-ghost btn-sm">View All</button>
           </div>
           {data.recentCustomers.length === 0 ? (
             <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13, fontWeight: 600 }}>
@@ -2766,13 +3055,20 @@ function DashboardView({ t, setActiveTab, setAutoOpenShopModal }) {
 // ============================================================================
 // COMPONENT 2: SHOPS MANAGEMENT WITH OPTIMIZED CENTERED FIXED DIALOG
 // ============================================================================
-function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOpen }) {
+function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOpen, searchDispatch }) {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   // Client-side live search - the full shop list is already fetched in one
   // call, so filtering happens instantly on every keystroke with no round-trip.
   const [shopSearchQuery, setShopSearchQuery] = useState('');
+
+  // Picks up a query dispatched from the global header search panel (filter = "Shop").
+  useEffect(() => {
+    if (searchDispatch && searchDispatch.type === 'shop') {
+      setShopSearchQuery(searchDispatch.query);
+    }
+  }, [searchDispatch?.nonce]);
 
   useEffect(() => {
     if (initiallyOpenAddModal) {
@@ -3894,6 +4190,20 @@ function SuperCustomersView({ api, searchDispatch }) {
   const [editReason, setEditReason] = useState('');
   const [editKeyNo, setEditKeyNo] = useState('');
 
+  // Create Customer (Super Admin) states
+  const [shops, setShops] = useState([]);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [createShopId, setCreateShopId] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [createAddress, setCreateAddress] = useState('');
+  const [createProofType, setCreateProofType] = useState('');
+  const [createProofNo, setCreateProofNo] = useState('');
+  const [createReason, setCreateReason] = useState('');
+  const [createKeyNo, setCreateKeyNo] = useState('');
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState('');
+
   useEffect(() => {
     fetchCustomers();
   }, [search]);
@@ -3907,6 +4217,57 @@ function SuperCustomersView({ api, searchDispatch }) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openCreateDrawer = async () => {
+    setCreateError('');
+    setCreateShopId('');
+    setCreateName('');
+    setCreatePhone('');
+    setCreateAddress('');
+    setCreateProofType('');
+    setCreateProofNo('');
+    setCreateReason('');
+    setCreateKeyNo('');
+    setShowCreateDrawer(true);
+    try {
+      const res = await api.getShops();
+      setShops(res || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    setCreateError('');
+    if (!createShopId) {
+      setCreateError('Please select a shop before creating the customer.');
+      return;
+    }
+    if (!PHONE_REGEX.test(createPhone)) {
+      setCreateError(PHONE_REGEX_MESSAGE);
+      return;
+    }
+    setCreateSubmitting(true);
+    try {
+      await api.createSuperCustomer({
+        shopId: createShopId,
+        name: createName,
+        phone: createPhone,
+        address: createAddress,
+        idProofType: createProofType,
+        idProofNumber: createProofNo,
+        reason: createReason,
+        keyNumber: createKeyNo,
+      });
+      setShowCreateDrawer(false);
+      fetchCustomers();
+    } catch (err) {
+      setCreateError(err.message || 'Customer creation failed');
+    } finally {
+      setCreateSubmitting(false);
     }
   };
 
@@ -3954,6 +4315,10 @@ function SuperCustomersView({ api, searchDispatch }) {
           <h1>Customer Registry</h1>
           <p>Supervise and edit duplicate-key compliance records across every shop workspace on Kee.</p>
         </div>
+        <button onClick={openCreateDrawer} className="btn btn-primary">
+          <Plus />
+          <span>Create Customer</span>
+        </button>
       </div>
 
       {/* The search box lives outside the loading/results swap below so it
@@ -4026,6 +4391,111 @@ function SuperCustomersView({ api, searchDispatch }) {
         </table>
         )}
       </div>
+
+      {/* Create Customer drawer (Super Admin, shop-selectable) */}
+      {showCreateDrawer && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-end" style={{ background: 'rgba(5,4,3,0.82)' }}>
+          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 440, height: '100%', borderRadius: 0, overflowY: 'auto', padding: 28 }}>
+            <div className="flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 18 }}>
+              <div>
+                <span className="eyebrow" style={{ marginBottom: 4 }}><Plus /> Registry Create</span>
+                <h2 style={{ fontSize: 19 }}>Create Customer</h2>
+              </div>
+              <button onClick={() => setShowCreateDrawer(false)} className="icon-btn">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit}>
+              {createError && (
+                <div style={{ background: 'var(--red-dim)', color: 'var(--red)', fontSize: 12.5, fontWeight: 700, padding: '10px 12px', borderRadius: 10, marginBottom: 16 }}>
+                  {createError}
+                </div>
+              )}
+
+              <div className="field">
+                <label>Shop</label>
+                <div className="input-wrap">
+                  <Store />
+                  <select required value={createShopId} onChange={(e) => setCreateShopId(e.target.value)}>
+                    <option value="">Select a shop&hellip;</option>
+                    {shops.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Full Customer Name</label>
+                <div className="input-wrap">
+                  <User />
+                  <input type="text" required value={createName} onChange={(e) => setCreateName(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Phone Number</label>
+                <div className="input-wrap">
+                  <Phone />
+                  <input type="tel" required value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Registered Address</label>
+                <div className="input-wrap">
+                  <MapPin />
+                  <input type="text" value={createAddress} onChange={(e) => setCreateAddress(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-grid">
+                <div className="field">
+                  <label>ID Type</label>
+                  <div className="input-wrap">
+                    <ShieldCheck />
+                    <input type="text" value={createProofType} onChange={(e) => setCreateProofType(e.target.value)} />
+                  </div>
+                </div>
+                <div className="field">
+                  <label>ID Proof Number</label>
+                  <div className="input-wrap">
+                    <Hash />
+                    <input type="text" value={createProofNo} onChange={(e) => setCreateProofNo(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Reason for Duplicate Key</label>
+                <div className="input-wrap">
+                  <FileText />
+                  <input type="text" value={createReason} onChange={(e) => setCreateReason(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Cut Key Code</label>
+                <div className="input-wrap">
+                  <KeyRound />
+                  <input type="text" required value={createKeyNo} onChange={(e) => setCreateKeyNo(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 4 }}>
+                <button type="button" onClick={() => setShowCreateDrawer(false)} className="btn btn-ghost">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={createSubmitting}>
+                  {createSubmitting ? 'Creating…' : 'Create Customer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Edit Customer Profile drawer */}
       {showEditDrawer && selectedCust && createPortal(
@@ -4177,7 +4647,7 @@ function SuperCustomersView({ api, searchDispatch }) {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4" style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: viewCust.documents && viewCust.documents.length > 0 ? 18 : 0 }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: viewCust.documents && viewCust.documents.length > 0 ? 18 : 0 }}>
               <div>
                 <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Webcam Photo</span>
                 {viewCust.photoUrl ? (
@@ -4187,18 +4657,6 @@ function SuperCustomersView({ api, searchDispatch }) {
                 ) : (
                   <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
                     <Camera style={{ width: 18, height: 18, color: 'var(--text-3)' }} />
-                  </div>
-                )}
-              </div>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Customer Signature</span>
-                {viewCust.signatureUrl ? (
-                  <div style={{ width: '100%', height: 128, borderRadius: 12, background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10 }} className="flex items-center justify-center">
-                    <img src={getAssetUrl(viewCust.signatureUrl)} alt="Signature drawing" className="max-h-full max-w-full object-contain" />
-                  </div>
-                ) : (
-                  <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
-                    <PenLine style={{ width: 18, height: 18, color: 'var(--text-3)' }} />
                   </div>
                 )}
               </div>
@@ -6163,7 +6621,7 @@ function KeysSearchView({ api, searchDispatch }) {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4" style={{ marginTop: 12 }}>
+                    <div style={{ marginTop: 12 }}>
                       <div>
                         <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: 6 }}>Webcam Snapshot</span>
                         {selectedResult.customer.photoUrl ? (
@@ -6173,18 +6631,6 @@ function KeysSearchView({ api, searchDispatch }) {
                         ) : (
                           <div style={{ width: '100%', height: 96, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
                             <Camera style={{ width: 16, height: 16, color: 'var(--text-3)' }} />
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: 6 }}>Customer Signature</span>
-                        {selectedResult.customer.signatureUrl ? (
-                          <div style={{ width: '100%', height: 96, borderRadius: 12, background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 8 }} className="flex items-center justify-center">
-                            <img src={getAssetUrl(selectedResult.customer.signatureUrl)} alt="Signature" className="max-h-full max-w-full object-contain" />
-                          </div>
-                        ) : (
-                          <div style={{ width: '100%', height: 96, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
-                            <PenLine style={{ width: 16, height: 16, color: 'var(--text-3)' }} />
                           </div>
                         )}
                       </div>
@@ -6230,7 +6676,7 @@ function KeysSearchView({ api, searchDispatch }) {
                     <div style={{ display: 'flex', gap: 8, background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border)', padding: 10, borderRadius: 12, marginTop: 4 }}>
                       <AlertTriangle style={{ width: 14, height: 14, color: 'var(--text-3)', flexShrink: 0, marginTop: 1 }} />
                       <span style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 600, fontStyle: 'italic' }}>
-                        Sensitive coordinates, webcam images, and proof signatures are hidden since this key registration was created in another duplicate key shop.
+                        Sensitive coordinates and webcam images are hidden since this key registration was created in another duplicate key shop.
                       </span>
                     </div>
                   </div>
@@ -6277,9 +6723,8 @@ function CustomerRegistrationWizard({ t, api }) {
   const [otpError, setOtpError] = useState('');
   const [duplicateKeyWarning, setDuplicateKeyWarning] = useState(false);
 
-  // Photos & Signatures (Webcam support)
+  // Photos (Webcam support)
   const [photoBase64, setPhotoBase64] = useState(null);
-  const [signatureBase64, setSignatureBase64] = useState(null);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [webcamStream, setWebcamStream] = useState(null);
   const videoRef = useRef(null);
@@ -6295,12 +6740,6 @@ function CustomerRegistrationWizard({ t, api }) {
   const [gpsError, setGpsError] = useState('');
   const [isCapturingGps, setIsCapturingGps] = useState(false);
   const [capturedAddress, setCapturedAddress] = useState('');
-  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
-
-  // Canvas Ref for Signature
-  const canvasRef = useRef(null);
-  const isDrawing = useRef(false);
 
   useEffect(() => {
     const fetchKeys = async () => {
@@ -6326,98 +6765,55 @@ function CustomerRegistrationWizard({ t, api }) {
     }
   }, [addressLine, district, stateVal, country]);
 
-  const resolveAddress = async (lat, lng) => {
-    setIsResolvingAddress(true);
-    try {
-      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-      if (res.ok) {
-        const data = await res.json();
-        const parts = [];
-        if (data.locality) parts.push(data.locality);
-        if (data.city) parts.push(data.city);
-        if (data.principalSubdivision) parts.push(data.principalSubdivision);
-        if (data.countryName) parts.push(data.countryName);
-        if (parts.length > 0) {
-          setCapturedAddress(parts.join(', '));
-          setIsResolvingAddress(false);
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('BigDataCloud address resolution failed:', e);
+  // "Current Location" button for the Contact & Key step - captures the device's
+  // real GPS position and reverse-geocodes it to best-effort prefill the address
+  // line / state / district dropdowns. All of these stay fully editable afterwards
+  // (this is a manual, explicit action - nothing auto-runs on the Review step
+  // anymore, which is now a pure read-only summary).
+  const captureCustomerLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Geolocation is not supported on this device.');
+      return;
     }
-
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
-        headers: { 'Accept-Language': 'en' }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.display_name) {
-          setCapturedAddress(data.display_name);
-          setIsResolvingAddress(false);
-          return;
-        }
-      }
-    } catch (e) {
-      console.error('Nominatim address resolution failed:', e);
-    }
-
-    if (lat === 28.6139 && lng === 77.2090) {
-      setCapturedAddress('Connaught Place, New Delhi, India');
-    } else {
-      setCapturedAddress(`Coordinates: ${lat}, ${lng}`);
-    }
-    setIsResolvingAddress(false);
-  };
-
-  const geocodeManualAddress = async (addrStr) => {
-    setIsCapturingGps(true);
     setGpsError('');
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lng = parseFloat(data[0].lon);
-          setLatitude(lat);
-          setLongitude(lng);
-          setIsCapturingGps(false);
-          return;
+    setIsCapturingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setLatitude(lat);
+        setLongitude(lng);
+        setGpsTimestamp(new Date().toISOString());
+        try {
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.locality || data.city) {
+              setAddressLine(data.locality || data.city);
+            }
+            const matchedState = Object.keys(INDIAN_STATES_DISTRICTS).find(
+              st => st.toLowerCase() === (data.principalSubdivision || '').toLowerCase()
+            );
+            if (matchedState) {
+              setStateVal(matchedState);
+              const list = INDIAN_STATES_DISTRICTS[matchedState] || [];
+              const matchedDistrict = list.find(dt => dt.toLowerCase() === (data.city || data.locality || '').toLowerCase());
+              setDistrict(matchedDistrict || list[0] || district);
+            }
+            const parts = [data.locality, data.city, data.principalSubdivision, data.countryName].filter(Boolean);
+            if (parts.length > 0) setCapturedAddress(parts.join(', '));
+          }
+        } catch (e) {
+          console.warn('Reverse geocoding failed:', e);
         }
+        setIsCapturingGps(false);
+      },
+      () => {
+        setIsCapturingGps(false);
+        setGpsError('Unable to fetch current location. Please allow location access or enter the address manually.');
       }
-    } catch (e) {
-      console.warn('Geocoding manual address failed:', e);
-    }
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLatitude(pos.coords.latitude);
-          setLongitude(pos.coords.longitude);
-          setIsCapturingGps(false);
-        },
-        (err) => {
-          setLatitude(28.6139);
-          setLongitude(77.2090);
-          setIsCapturingGps(false);
-        }
-      );
-    } else {
-      setLatitude(28.6139);
-      setLongitude(77.2090);
-      setIsCapturingGps(false);
-    }
+    );
   };
-
-  useEffect(() => {
-    if (step === 5) {
-      const finalAddress = `${addressLine}, ${district}, ${stateVal}, India`;
-      setCapturedAddress(finalAddress);
-      geocodeManualAddress(finalAddress);
-    }
-  }, [step]);
 
   const startWebcam = async () => {
     try {
@@ -6481,59 +6877,6 @@ function CustomerRegistrationWizard({ t, api }) {
       setIsWebcamActive(false);
     }
   }, [step]);
-
-  useEffect(() => {
-    if (step === 3 && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      ctx.strokeStyle = '#4f46e5';
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = 'round';
-    }
-  }, [step]);
-
-  const startDrawing = (e) => {
-    if (e.cancelable) e.preventDefault();
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    isDrawing.current = true;
-    const clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
-    const clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e) => {
-    if (e.cancelable) e.preventDefault();
-    if (!isDrawing.current || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
-    const clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0;
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => { isDrawing.current = false; };
-  const clearSignature = () => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setSignatureBase64(null);
-  };
-
-  const saveSignature = () => {
-    if (!canvasRef.current) return;
-    setSignatureBase64(canvasRef.current.toDataURL());
-  };
 
   const handleFileChange = (e) => {
     setUploadError('');
@@ -6642,7 +6985,7 @@ function CustomerRegistrationWizard({ t, api }) {
         longitude: finalLng,
         mapsLink: `https://www.google.com/maps?q=${finalLat},${finalLng}`,
         capturedAddress: capturedAddress || 'Connaught Place, New Delhi, India',
-        photoBase64, signatureBase64
+        photoBase64
       });
 
       for (const doc of uploadedDocs) {
@@ -6674,7 +7017,6 @@ function CustomerRegistrationWizard({ t, api }) {
     setEnteredOtp('');
     setDuplicateKeyWarning(false);
     setPhotoBase64(null);
-    setSignatureBase64(null);
     setUploadedDocs([]);
     setLatitude(null);
     setLongitude(null);
@@ -6692,7 +7034,6 @@ function CustomerRegistrationWizard({ t, api }) {
   const WIZARD_STEPS = [
     { name: 'Contact & Key' },
     { name: 'ID Photo' },
-    { name: 'Signature' },
     { name: 'Documents' },
     { name: 'Review' },
   ];
@@ -6800,11 +7141,27 @@ function CustomerRegistrationWizard({ t, api }) {
                 </div>
 
                 <div className="field full">
-                  <label>Address Line</label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label style={{ marginBottom: 0 }}>Address Line</label>
+                    <button
+                      type="button"
+                      onClick={captureCustomerLocation}
+                      disabled={isCapturingGps}
+                      className="flex items-center gap-1 cursor-pointer select-none"
+                      style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0 }}
+                    >
+                      <Crosshair className={isCapturingGps ? 'animate-spin' : ''} style={{ width: 12, height: 12 }} />
+                      <span>{isCapturingGps ? 'Locating…' : 'Current Location'}</span>
+                    </button>
+                  </div>
                   <div className="input-wrap">
                     <MapPin />
                     <input type="text" required value={addressLine} onChange={(e) => setAddressLine(e.target.value)} placeholder="e.g. Flat 101, Park Avenue" />
                   </div>
+                  {gpsError && <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700, marginTop: 6 }}>{gpsError}</p>}
+                  {latitude && longitude && !gpsError && (
+                    <p style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginTop: 6 }}>GPS captured: {latitude.toFixed(5)}, {longitude.toFixed(5)}</p>
+                  )}
                 </div>
 
                 <div className="field">
@@ -6914,39 +7271,6 @@ function CustomerRegistrationWizard({ t, api }) {
 
           {step === 3 && (
             <div className="animate-fade-in">
-              <h3>Signature Verification</h3>
-              <p className="desc">Capture the customer's signature to authorize this duplicate key issuance.</p>
-
-              <div className="field" style={{ maxWidth: 420, margin: '0 auto' }}>
-                <label style={{ textAlign: 'center' }}>Customer Signature</label>
-                {signatureBase64 ? (
-                  <div className="sig-frame" style={{ background: 'var(--card-2)', border: '1.5px solid var(--border-2)', borderRadius: 16, height: 150, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src={signatureBase64} alt="Signature preview" style={{ height: '100%', maxWidth: '100%', objectFit: 'contain' }} />
-                  </div>
-                ) : (
-                  <canvas
-                    ref={canvasRef} width={384} height={150}
-                    onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing}
-                    onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing}
-                    className="signature-canvas-container sig-frame" style={{ width: '100%', height: 150 }}
-                  />
-                )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 16 }}>
-                  {!signatureBase64 ? (
-                    <>
-                      <button type="button" onClick={clearSignature} className="btn btn-ghost btn-sm">Clear</button>
-                      <button type="button" onClick={saveSignature} className="btn btn-primary btn-sm"><PenLine className="h-4 w-4" /> Lock Signature</button>
-                    </>
-                  ) : (
-                    <button type="button" onClick={() => setSignatureBase64(null)} className="btn btn-ghost btn-sm"><RotateCcw className="h-4 w-4" /> Re-draw</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="animate-fade-in">
               <h3>Compliance Document Upload</h3>
               <p className="desc">Upload a copy of the government ID proof used to verify this customer.</p>
 
@@ -6985,10 +7309,10 @@ function CustomerRegistrationWizard({ t, api }) {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <div className="animate-fade-in">
-              <h3>Review &amp; GPS Stamp</h3>
-              <p className="desc">Confirm the details below and capture a GPS-stamped address before submitting.</p>
+              <h3>Review</h3>
+              <p className="desc">Verify every detail entered below before submitting this compliance registration. Nothing is captured or modified automatically on this step.</p>
 
               <div className="form-grid" style={{ paddingBottom: 22, marginBottom: 22, borderBottom: '1px solid var(--border)' }}>
                 <div className="field"><label>Customer</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{name}</div></div>
@@ -6998,79 +7322,33 @@ function CustomerRegistrationWizard({ t, api }) {
                 <div className="field full"><label>Registered Address</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{addressLine}, {district}, {stateVal}, India</div></div>
               </div>
 
-              <span className="side-section-label" style={{ padding: 0, display: 'block', marginBottom: 12 }}>Automatic GPS compliance stamp</span>
+              <div className="form-grid" style={{ paddingBottom: 22, marginBottom: 22, borderBottom: '1px solid var(--border)' }}>
+                <div className="field"><label>ID Proof Type</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{idProofType}</div></div>
+                <div className="field"><label>Uploaded Documents</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{uploadedDocs.length > 0 ? `${uploadedDocs.length} file(s) attached` : 'None attached'}</div></div>
+              </div>
 
-              {isCapturingGps ? (
+              <span className="side-section-label" style={{ padding: 0, display: 'block', marginBottom: 12 }}>Location</span>
+              {latitude && longitude ? (
                 <div className="loc-box">
                   <div className="loc-info">
-                    <div className="icon-badge"><RefreshCw className="h-5 w-5 animate-spin" /></div>
+                    <div className="icon-badge green"><Crosshair className="h-5 w-5" /></div>
                     <div className="loc-text">
-                      <div className="t1">Locating…</div>
-                      <div className="t2">Fetching device GPS coordinates</div>
+                      <div className="t1">GPS Captured</div>
+                      <div className="t2">Lat {Number(latitude).toFixed(5)} · Long {Number(longitude).toFixed(5)}</div>
                     </div>
                   </div>
-                </div>
-              ) : gpsError ? (
-                <div style={{ background: 'var(--amber-dim)', border: '1px solid rgba(240,185,11,0.3)', borderRadius: 16, padding: 18 }}>
-                  <p style={{ color: 'var(--amber)', fontSize: 12.5, fontWeight: 700, marginBottom: 12 }}>{gpsError}</p>
-                  <div className="form-grid">
-                    <input
-                      type="number" step="0.0001" placeholder="Latitude" value={latitude || ''}
-                      onChange={(e) => { const lat = Number(e.target.value); setLatitude(lat); if (longitude) resolveAddress(lat, longitude); }}
-                      style={plainInputStyle}
-                    />
-                    <input
-                      type="number" step="0.0001" placeholder="Longitude" value={longitude || ''}
-                      onChange={(e) => { const lng = Number(e.target.value); setLongitude(lng); if (latitude) resolveAddress(latitude, lng); }}
-                      style={plainInputStyle}
-                    />
-                  </div>
-                  {isResolvingAddress ? (
-                    <p style={{ fontSize: 11, color: 'var(--text-3)', fontStyle: 'italic', marginTop: 10 }}>Resolving address…</p>
-                  ) : (
-                    capturedAddress && <p style={{ fontSize: 11, color: 'var(--text-2)', fontStyle: 'italic', marginTop: 10 }}>Resolved: {capturedAddress}</p>
-                  )}
                 </div>
               ) : (
-                <div className="loc-box" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div className="loc-info">
-                      <div className="icon-badge green"><Crosshair className="h-5 w-5" /></div>
-                      <div className="loc-text">
-                        <div className="t1">GPS Stamped</div>
-                        <div className="t2">Lat {latitude} · Long {longitude}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <button type="button" onClick={() => setIsEditingAddress(!isEditingAddress)} className="btn btn-outline btn-sm">
-                        {isEditingAddress ? 'Done' : 'Edit Location'}
-                      </button>
-                      <span className="badge badge-active"><span className="dot" />Secured</span>
-                    </div>
-                  </div>
-
-                  {isResolvingAddress ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)', fontWeight: 700, marginTop: 14 }}>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" style={{ color: 'var(--green)' }} /> Resolving address…
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: 14 }}>
-                      {isEditingAddress ? (
-                        <textarea
-                          value={capturedAddress} onChange={(e) => setCapturedAddress(e.target.value)}
-                          rows={2} placeholder="Enter manual address details..."
-                          style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', borderRadius: 13, padding: '12px 14px', color: 'var(--text-0)', fontSize: 13, outline: 'none' }}
-                        />
-                      ) : (
-                        capturedAddress && (
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--text-2)', fontWeight: 600, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                            <MapPin className="h-4 w-4" style={{ color: 'var(--green)', flexShrink: 0, marginTop: 2 }} />
-                            <span>{capturedAddress}</span>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
+                <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 16 }}>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-3)', fontWeight: 600 }}>
+                    No GPS location was captured. Go back to the "Contact &amp; Key" step and use the "Current Location" button if you'd like to attach coordinates.
+                  </p>
+                </div>
+              )}
+              {capturedAddress && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, color: 'var(--text-2)', fontWeight: 600, marginTop: 12 }}>
+                  <MapPin className="h-4 w-4" style={{ color: 'var(--green)', flexShrink: 0, marginTop: 2 }} />
+                  <span>{capturedAddress}</span>
                 </div>
               )}
             </div>
@@ -7102,34 +7380,13 @@ function CustomerRegistrationWizard({ t, api }) {
               </button>
             )}
             {step === 3 && (
-              <button
-                type="button" className="btn btn-primary"
-                onClick={() => {
-                  if (!signatureBase64 && canvasRef.current) {
-                    setSignatureBase64(canvasRef.current.toDataURL());
-                  }
-                  setStep(4);
-                }}
-              >
+              <button type="button" className="btn btn-primary" onClick={() => setStep(4)}>
                 Continue <ArrowRight className="h-4 w-4" />
               </button>
             )}
             {step === 4 && (
-              <button type="button" className="btn btn-primary" onClick={() => setStep(5)}>
-                Continue <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-            {step === 5 && (
-              <button type="button" className="btn btn-primary" disabled={isCapturingGps} onClick={handleFinalSubmit}>
-                {isCapturingGps ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" /> GPS Locating…
-                  </>
-                ) : (
-                  <>
-                    Submit Compliance Record <Check className="h-4 w-4" />
-                  </>
-                )}
+              <button type="button" className="btn btn-primary" onClick={handleFinalSubmit}>
+                Submit Compliance Record <Check className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -7385,7 +7642,7 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4" style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
                   <div>
                     <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Webcam Photo</span>
                     {selectedCust.photoUrl ? (
@@ -7395,18 +7652,6 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
                     ) : (
                       <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
                         <Camera style={{ width: 18, height: 18, color: 'var(--text-3)' }} />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Customer Signature</span>
-                    {selectedCust.signatureUrl ? (
-                      <div style={{ width: '100%', height: 128, borderRadius: 12, background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10 }} className="flex items-center justify-center">
-                        <img src={getAssetUrl(selectedCust.signatureUrl)} alt="Signature drawing" className="max-h-full max-w-full object-contain" />
-                      </div>
-                    ) : (
-                      <div style={{ width: '100%', height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
-                        <PenLine style={{ width: 18, height: 18, color: 'var(--text-3)' }} />
                       </div>
                     )}
                   </div>
@@ -8523,7 +8768,6 @@ function ShopSettingsView({ t, api }) {
 // COMPONENT 14: REPORTS PORTAL VIEW
 // ============================================================================
 export function ReportsPortalView({ t, api }) {
-  const [reportType, setReportType] = useState('REGISTRATIONS'); // REGISTRATIONS | INVENTORY | AUDIT
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [reportData, setReportData] = useState([]);
@@ -8542,39 +8786,22 @@ export function ReportsPortalView({ t, api }) {
     e.preventDefault();
     setLoading(true);
     try {
-      if (reportType === 'REGISTRATIONS') {
-        const custs = await api.getCustomers();
-        const filtered = custs.filter(c => {
-          const cDate = new Date(c.createdAt).getTime();
-          const start = fromDate ? new Date(fromDate).getTime() : 0;
-          const end = toDate ? new Date(toDate + 'T23:59:59').getTime() : Infinity;
-          return cDate >= start && cDate <= end;
-        });
-        setReportData(filtered.map(c => ({
-          'Customer Name': c.name,
-          'Phone': c.phone,
-          'Vehicle Number': c.vehicleNumber || 'N/A',
-          'Key Blank Code': c.keyNumber,
-          'Location Address': c.capturedAddress || 'N/A',
-          'GPS Coordinates': `${c.latitude}, ${c.longitude}`,
-          'Date Registered': new Date(c.createdAt).toLocaleString()
-        })));
-      } else if (reportType === 'INVENTORY') {
-        const inventory = await api.getInventoryItems ? await api.getInventoryItems() : [];
-        setReportData(inventory.map(item => ({
-          'Item ID': item.id,
-          'Key Blank Reference': item.keyNumber || 'N/A',
-          'Quantity on Hand': item.quantity || 0,
-          'Reorder Level': item.reorderLevel || 5,
-          'Last Restocked': item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'N/A'
-        })));
-      } else {
-        setReportData([
-          { 'Activity ID': 'AUD-001', 'User / Account': 'Shop Operator', 'Action Perfomed': 'Verified Customer TN09B', 'Device IP': '192.168.1.102', 'Timestamp': new Date().toLocaleString() },
-          { 'Activity ID': 'AUD-002', 'User / Account': 'Shop Operator', 'Action Perfomed': 'Created Key Spec TN09B', 'Device IP': '192.168.1.102', 'Timestamp': new Date().toLocaleString() },
-          { 'Activity ID': 'AUD-003', 'User / Account': 'Shop Operator', 'Action Perfomed': 'Updated settings GSTIN', 'Device IP': '192.168.1.102', 'Timestamp': new Date().toLocaleString() },
-        ]);
-      }
+      const custs = await api.getCustomers();
+      const filtered = custs.filter(c => {
+        const cDate = new Date(c.createdAt).getTime();
+        const start = fromDate ? new Date(fromDate).getTime() : 0;
+        const end = toDate ? new Date(toDate + 'T23:59:59').getTime() : Infinity;
+        return cDate >= start && cDate <= end;
+      });
+      setReportData(filtered.map(c => ({
+        'Customer Name': c.name,
+        'Phone': c.phone,
+        'Vehicle Number': c.vehicleNumber || 'N/A',
+        'Key Blank Code': c.keyNumber,
+        'Location Address': c.capturedAddress || 'N/A',
+        'GPS Coordinates': `${c.latitude}, ${c.longitude}`,
+        'Date Registered': new Date(c.createdAt).toLocaleString()
+      })));
     } catch (err) {
       console.error(err);
       alert('Failed to generate report.');
@@ -8604,7 +8831,7 @@ export function ReportsPortalView({ t, api }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `kee_report_${reportType.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `kee_report_${new Date().toISOString().split('T')[0]}.csv`;
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -8618,7 +8845,7 @@ export function ReportsPortalView({ t, api }) {
     }
     const headers = Object.keys(reportData[0]);
     let txtContent = `========================================================================\n`;
-    txtContent += `KEE SYSTEM TERMINAL - ${reportType.toUpperCase()} REPORT\n`;
+    txtContent += `KEE SYSTEM TERMINAL - CUSTOMER REGISTRATION REPORT\n`;
     txtContent += `Generated: ${new Date().toLocaleString()}\n`;
     txtContent += `Range: ${fromDate || 'All Time'} to ${toDate || 'All Time'}\n`;
     txtContent += `========================================================================\n\n`;
@@ -8634,14 +8861,12 @@ export function ReportsPortalView({ t, api }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `kee_report_${reportType.toLowerCase()}_${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `kee_report_${new Date().toISOString().split('T')[0]}.txt`;
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
-
-  const reportTypeLabel = reportType === 'REGISTRATIONS' ? 'Customer Registry' : reportType === 'INVENTORY' ? 'Inventory Stock' : 'Security Audit';
 
   return (
     <div className="animate-fade-in">
@@ -8649,47 +8874,17 @@ export function ReportsPortalView({ t, api }) {
         <div>
           <div className="eyebrow"><BarChart3 /> Compliance &amp; Analytics</div>
           <h1>{t('reports')}</h1>
-          <p>Generate dynamic CSV and plain-text compliance audits across registrations, inventory and terminal activity.</p>
+          <p>Generate dynamic CSV and plain-text customer registration reports for any date range.</p>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 'clamp(16px, 4vw, 24px)' }}>
         <div className="section-title" style={{ marginBottom: 18 }}>
           <h2>Report Builder</h2>
-          <span className="sub">Select a report type and date range, then generate the audit view</span>
+          <span className="sub">Select a date range, then generate the report</span>
         </div>
 
         <form onSubmit={handleGenerate}>
-          <div className="field">
-            <label>Report Type</label>
-            <div className="store-tabs">
-              <button
-                type="button"
-                onClick={() => setReportType('REGISTRATIONS')}
-                className={`store-tab ${reportType === 'REGISTRATIONS' ? 'active' : ''}`}
-              >
-                <UserCheck className="h-3.5 w-3.5" style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
-                Customer Registry
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportType('INVENTORY')}
-                className={`store-tab ${reportType === 'INVENTORY' ? 'active' : ''}`}
-              >
-                <Boxes className="h-3.5 w-3.5" style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
-                Inventory Stock
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportType('AUDIT')}
-                className={`store-tab ${reportType === 'AUDIT' ? 'active' : ''}`}
-              >
-                <ShieldCheck className="h-3.5 w-3.5" style={{ display: 'inline', marginRight: 6, verticalAlign: '-2px' }} />
-                Security Audit
-              </button>
-            </div>
-          </div>
-
           <div className="form-grid">
             <div className="field">
               <label>From Date</label>
@@ -8714,14 +8909,14 @@ export function ReportsPortalView({ t, api }) {
             style={{ marginTop: 6 }}
           >
             <RefreshCw className={loading ? 'animate-spin' : ''} />
-            <span>{loading ? 'Generating\u2026' : 'Generate Audit View'}</span>
+            <span>{loading ? 'Generating\u2026' : 'Generate Report'}</span>
           </button>
         </form>
       </div>
 
       {reportData.length > 0 && (
         <div className="animate-fade-in">
-          <div className="stat-grid three">
+          <div className="stat-grid two">
             <div className="stat-card" style={{ animationDelay: '.05s' }}>
               <div className="stat-top">
                 <div className="icon-badge"><FileText /></div>
@@ -8736,13 +8931,6 @@ export function ReportsPortalView({ t, api }) {
               <div className="stat-num" style={{ fontSize: 18 }}>{fromDate || 'All time'} &rarr; {toDate || 'Today'}</div>
               <div className="stat-label">Date Range Covered</div>
             </div>
-            <div className="stat-card" style={{ animationDelay: '.25s' }}>
-              <div className="stat-top">
-                <div className="icon-badge"><BarChart3 /></div>
-              </div>
-              <div className="stat-num" style={{ fontSize: 18 }}>{reportTypeLabel}</div>
-              <div className="stat-label">Report Type</div>
-            </div>
           </div>
 
           {/* Graphical Report Chart Visualization */}
@@ -8752,42 +8940,26 @@ export function ReportsPortalView({ t, api }) {
               <span className="sub">Hover elements to view exact values</span>
             </div>
 
-            <div className={`grid grid-cols-1 ${reportType === 'REGISTRATIONS' ? 'md:grid-cols-2' : ''} gap-6`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Left Column: Bar Chart */}
               <div>
                 <h4 className="bar-label" style={{ textAlign: 'center', marginBottom: 10, fontSize: 11 }}>
-                  {reportType === 'REGISTRATIONS' ? 'Registrations by Key Blank Reference' : reportType === 'INVENTORY' ? 'Stock vs Reorder Limits' : 'Action Types Distribution'}
+                  Registrations by Key Blank Reference
                 </h4>
                 <div className="bars">
                   {(() => {
-                    let dataPoints = [];
-                    if (reportType === 'REGISTRATIONS') {
-                      const counts = {};
-                      reportData.forEach(r => {
-                        const key = r['Key Blank Code'] || 'N/A';
-                        counts[key] = (counts[key] || 0) + 1;
-                      });
-                      dataPoints = Object.keys(counts).map(key => ({ label: key, value: counts[key] })).slice(0, 8);
-                    } else if (reportType === 'INVENTORY') {
-                      dataPoints = reportData.map(r => ({
-                        label: r['Key Blank Reference'] || 'N/A',
-                        value: r['Quantity on Hand'] || 0,
-                        reorder: r['Reorder Level'] || 5
-                      })).slice(0, 8);
-                    } else {
-                      dataPoints = [
-                        { label: 'Verify Customer', value: reportData.filter(r => r['Action Perfomed']?.includes('Verify')).length || 1 },
-                        { label: 'Create Spec', value: reportData.filter(r => r['Action Perfomed']?.includes('Create')).length || 1 },
-                        { label: 'Update Settings', value: reportData.filter(r => r['Action Perfomed']?.includes('Settings')).length || 1 }
-                      ];
-                    }
+                    const counts = {};
+                    reportData.forEach(r => {
+                      const key = r['Key Blank Code'] || 'N/A';
+                      counts[key] = (counts[key] || 0) + 1;
+                    });
+                    const dataPoints = Object.keys(counts).map(key => ({ label: key, value: counts[key] })).slice(0, 8);
 
-                    const maxVal = Math.max(...dataPoints.map(d => Math.max(d.value, d.reorder || 0)), 1);
+                    const maxVal = Math.max(...dataPoints.map(d => d.value), 1);
 
                     return dataPoints.map((d, idx) => {
                       const heightPercent = (d.value / maxVal) * 100;
-                      const reorderHeight = d.reorder ? (d.reorder / maxVal) * 100 : 0;
                       return (
                         <div key={idx} className="bar-col group" style={{ position: 'relative' }}>
                           <div style={{ width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 4, height: '100%' }}>
@@ -8802,12 +8974,6 @@ export function ReportsPortalView({ t, api }) {
                                 {d.value}
                               </span>
                             </div>
-                            {d.reorder !== undefined && (
-                              <div
-                                style={{ height: `${reorderHeight}%`, width: 4, borderRadius: '3px 3px 0 0', background: 'var(--red)' }}
-                                title={`Reorder Level: ${d.reorder}`}
-                              ></div>
-                            )}
                           </div>
                           <div className="bar-label" style={{ marginTop: 8, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.label}</div>
                         </div>
@@ -8817,12 +8983,11 @@ export function ReportsPortalView({ t, api }) {
                 </div>
               </div>
 
-              {/* Right Column: Line Graph (Only for REGISTRATIONS) */}
-              {reportType === 'REGISTRATIONS' && (
-                <div>
-                  <h4 className="bar-label" style={{ textAlign: 'center', marginBottom: 10, fontSize: 11 }}>
-                    Registration Timeline Trend
-                  </h4>
+              {/* Right Column: Line Graph */}
+              <div>
+                <h4 className="bar-label" style={{ textAlign: 'center', marginBottom: 10, fontSize: 11 }}>
+                  Registration Timeline Trend
+                </h4>
                   <div className="h-48 w-full rounded-xl p-4 flex flex-col justify-between" style={{ background: 'var(--card-2)', border: '1px solid var(--border)' }}>
                     {(() => {
                       const dateCounts = {};
@@ -8894,19 +9059,12 @@ export function ReportsPortalView({ t, api }) {
                       );
                     })()}
                   </div>
-                </div>
-              )}
+              </div>
 
             </div>
 
             <div className="flex justify-between items-center" style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 4 }}>
               <span>Hover chart elements to view exact values</span>
-              {reportType === 'INVENTORY' && (
-                <div className="flex gap-3">
-                  <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--gold)' }}></span> Stock Level</span>
-                  <span className="legend-item"><span className="legend-dot" style={{ background: 'var(--red)', borderRadius: 2 }}></span> Reorder Limit</span>
-                </div>
-              )}
             </div>
           </div>
 

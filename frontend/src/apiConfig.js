@@ -11,11 +11,11 @@
 // enabled for all origins (see backend/src/main.ts), so this works as-is.
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-// Uploaded file URLs (customer photos/signatures/documents, shop
+// Uploaded file URLs (customer photos/documents, shop
 // verification docs) are stored in the DB as backend-relative paths like
 // "/api/uploads/xxx.png" (see backend/src/customer/file.service.ts). Those
 // need the same API_BASE prefix to resolve cross-origin. Client-generated
-// previews (data: URLs from webcam/signature capture, before upload) and
+// previews (data: URLs from webcam capture, before upload) and
 // any absolute http(s) URLs (e.g. ad/promotion image links) are returned
 // unchanged.
 export const getAssetUrl = (url) => {

@@ -155,7 +155,6 @@ model Customer {
   mapsLink        String?
   capturedAddress String?
   photoUrl        String?
-  signatureUrl    String?
   documents       CustomerDocument[]
 
   deletedAt DateTime?

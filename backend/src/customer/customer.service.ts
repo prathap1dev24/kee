@@ -19,7 +19,6 @@ export class CustomerService {
     const encryptedIdNumber = dto.idProofNumber ? this.cryptoService.encrypt(dto.idProofNumber) : null;
 
     let photoUrl = null;
-    let signatureUrl = null;
 
     // Process photo if present (Base64)
     if (dto.photoBase64) {
@@ -30,18 +29,6 @@ export class CustomerService {
         photoUrl = upload.fileUrl;
       } catch (err) {
         console.error('Failed to save webcam customer photo:', err.message);
-      }
-    }
-
-    // Process signature if present (Base64)
-    if (dto.signatureBase64) {
-      try {
-        const cleanBase64 = dto.signatureBase64.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(cleanBase64, 'base64');
-        const upload = await this.fileService.uploadFile('signature.png', buffer, shopId);
-        signatureUrl = upload.fileUrl;
-      } catch (err) {
-        console.error('Failed to save signature pad drawing:', err.message);
       }
     }
 
@@ -90,7 +77,6 @@ export class CustomerService {
           mapsLink: dto.mapsLink || `https://www.google.com/maps?q=${finalLat},${finalLng}`,
           capturedAddress: dto.capturedAddress || 'Connaught Place, New Delhi, India',
           photoUrl,
-          signatureUrl,
         },
       });
 
@@ -176,20 +162,6 @@ export class CustomerService {
     });
 
     return customers.map(c => this.decryptCustomerPII(c));
-  }
-
-  // SHOP ADMIN: Fetch Single Customer
-  async getCustomerById(shopId: string, id: string) {
-    const customer = await this.tenantService.prisma.customer.findFirst({
-      where: { id, shopId },
-      include: { documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } } },
-    });
-
-    if (!customer) {
-      throw new NotFoundException('Customer record not found');
-    }
-
-    return this.decryptCustomerPII(customer);
   }
 
   // SHOP ADMIN: Add Document to Customer
@@ -283,21 +255,6 @@ export class CustomerService {
       },
     });
     return customers.map(c => this.decryptCustomerPII(c));
-  }
-
-  // SUPER ADMIN: Get single customer by ID (any shop)
-  async getSuperCustomerById(id: string) {
-    const customer = await this.tenantService.prisma.customer.findFirst({
-      where: { id },
-      include: {
-        documents: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
-        shop: { select: { name: true } }
-      },
-    });
-    if (!customer) {
-      throw new NotFoundException('Customer record not found');
-    }
-    return this.decryptCustomerPII(customer);
   }
 
   // SUPER ADMIN: Update customer details (any shop)

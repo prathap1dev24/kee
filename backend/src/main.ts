@@ -15,7 +15,7 @@ async function bootstrap() {
   // bodyParser: false so we can register express.json/urlencoded ourselves
   // with a larger size limit — Nest's default bodyParser setup uses
   // express's default 100kb limit, which is too small for the base64-encoded
-  // customer photo/signature payloads sent by the customer registration form
+  // customer photo payloads sent by the customer registration form
   // (raised "PayloadTooLargeError: request entity too large").
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.use(express.json({ limit: '15mb' }));

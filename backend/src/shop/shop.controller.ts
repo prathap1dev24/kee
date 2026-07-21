@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ShopService } from './shop.service';
-import { CreateShopDto, UpdateShopDto, UpdateSettingsDto, ManageSubscriptionDto, ResetPasswordDto } from './dto/shop.dto';
+import { CreateShopDto, UpdateShopDto, UpdateSettingsDto, ManageSubscriptionDto } from './dto/shop.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -44,12 +44,6 @@ export class ShopController {
   @Roles(Role.SUPER_ADMIN)
   async suspendShop(@Param('id') id: string, @Body('isActive') isActive: boolean) {
     return this.shopService.setShopStatus(id, isActive);
-  }
-
-  @Post('super/shops/:id/reset-password')
-  @Roles(Role.SUPER_ADMIN)
-  async resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
-    return this.shopService.resetAdminPassword(id, dto.newPassword);
   }
 
   @Post('super/subscriptions/:shopId')

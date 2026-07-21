@@ -90,10 +90,16 @@ export class CreateCustomerDto {
   @IsString()
   @IsOptional()
   photoBase64?: string;
+}
 
+// SUPER ADMIN: same shape as CreateCustomerDto, plus a required target shop.
+// The Super Admin picks which shop's compliance registry the new customer
+// belongs to; everything else follows the normal customer-creation flow
+// (CustomerService.createCustomer is reused as-is with this shopId).
+export class CreateSuperCustomerDto extends CreateCustomerDto {
   @IsString()
-  @IsOptional()
-  signatureBase64?: string;
+  @IsNotEmpty({ message: 'Shop is required' })
+  shopId: string;
 }
 
 export class UpdateCustomerDto {
