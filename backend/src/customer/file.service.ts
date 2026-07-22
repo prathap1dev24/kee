@@ -103,10 +103,21 @@ export class FileService implements OnModuleInit {
       // like Firebase's contentDisposition metadata) — this is what makes
       // both the web <a download> click and the native Filesystem.download
       // flow save the file instead of previewing it inline.
+      //
+      // The filename given to fl_attachment:<name> must NOT contain a "."
+      // — Cloudinary's transformation-string parser treats a dot inside this
+      // flag's value as a format suffix on the *transformation segment*
+      // itself, which breaks parsing and returns 400 "Invalid flag in
+      // transformation: <ext>" for every download (e.g.
+      // fl_attachment:photo.jpg fails, fl_attachment:photo succeeds).
+      // Stripping the extension here is safe: Cloudinary auto-appends the
+      // resource's real extension to the Content-Disposition filename
+      // regardless (e.g. still downloads as "photo.jpg" on the device).
+      const safeNameNoExt = safeName.replace(/\.[a-zA-Z0-9]{1,8}$/, '');
       const fileUrl = cloudinary.url(result.public_id, {
         resource_type: result.resource_type as 'image' | 'video' | 'raw' | 'auto',
         secure: true,
-        flags: `attachment:${encodeURIComponent(safeName)}`,
+        flags: `attachment:${encodeURIComponent(safeNameNoExt)}`,
       });
       return { fileUrl, fileKey: `${result.resource_type}:${result.public_id}` };
     }
