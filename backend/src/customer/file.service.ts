@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getStorage, Storage } from 'firebase-admin/storage';
+import { v2 as cloudinary } from 'cloudinary';
 
 const CONTENT_TYPE_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
@@ -18,13 +19,31 @@ export class FileService implements OnModuleInit {
   private readonly uploadDir = path.join(process.cwd(), 'public', 'uploads');
   private bucket: ReturnType<Storage['bucket']> | null = null;
   private useFirebase = false;
+  private useCloudinary = false;
 
   onModuleInit() {
     // Local-disk fallback dir. Always created so local dev / tests keep
-    // working out of the box without any Firebase setup — only used when
-    // Firebase Storage env vars below are absent.
+    // working out of the box without any Firebase/Cloudinary setup — only
+    // used when neither of the persistent-storage backends below is
+    // configured.
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
+    }
+
+    // Cloudinary is checked first: unlike Firebase Storage (which now
+    // requires the project to be on the paid "Blaze" plan just to create a
+    // bucket), Cloudinary's free tier (25GB storage/bandwidth) needs no
+    // billing account at all, so it's the easiest zero-cost persistent
+    // backend to stand up on a free-tier Render service.
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (cloudName && apiKey && apiSecret) {
+      cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
+      this.useCloudinary = true;
+      console.log(`FileService: using Cloudinary (cloud "${cloudName}") for uploads.`);
+      return;
     }
 
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET;
@@ -52,7 +71,7 @@ export class FileService implements OnModuleInit {
       }
     } else {
       console.log(
-        'FileService: FIREBASE_STORAGE_BUCKET/FIREBASE_SERVICE_ACCOUNT_KEY not set — using local disk for uploads. ' +
+        'FileService: no CLOUDINARY_* or FIREBASE_STORAGE_BUCKET/FIREBASE_SERVICE_ACCOUNT_KEY env vars set — using local disk for uploads. ' +
         'This is fine for local dev, but on ephemeral hosts (Render, Railway, Cloud Run) uploaded files are lost on every restart/redeploy.',
       );
     }
@@ -66,6 +85,31 @@ export class FileService implements OnModuleInit {
     const fileExt = path.extname(originalname);
     const cleanShopId = shopId.replace(/[^a-zA-Z0-9]/g, '');
     const uniqueName = `${cleanShopId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}${fileExt}`;
+
+    if (this.useCloudinary) {
+      const safeName = (originalname || uniqueName).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const publicId = uniqueName.slice(0, uniqueName.length - fileExt.length);
+      const result = await new Promise<{ public_id: string; resource_type: string }>(
+        (resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { public_id: publicId, resource_type: 'auto', type: 'upload' },
+            (err, res) => (err || !res ? reject(err || new Error('Cloudinary upload failed')) : resolve(res)),
+          );
+          stream.end(buffer);
+        },
+      );
+      // fl_attachment forces a Content-Disposition: attachment response
+      // header at delivery time (rather than baking it in at upload time,
+      // like Firebase's contentDisposition metadata) — this is what makes
+      // both the web <a download> click and the native Filesystem.download
+      // flow save the file instead of previewing it inline.
+      const fileUrl = cloudinary.url(result.public_id, {
+        resource_type: result.resource_type as 'image' | 'video' | 'raw' | 'auto',
+        secure: true,
+        flags: `attachment:${encodeURIComponent(safeName)}`,
+      });
+      return { fileUrl, fileKey: `${result.resource_type}:${result.public_id}` };
+    }
 
     if (this.useFirebase && this.bucket) {
       const file = this.bucket.file(uniqueName);
@@ -94,6 +138,24 @@ export class FileService implements OnModuleInit {
   }
 
   async deleteFile(fileKey: string): Promise<void> {
+    if (this.useCloudinary) {
+      // Cloudinary fileKeys are stored as "resourceType:publicId" (see
+      // uploadFile above). Older fileKeys created before Cloudinary was
+      // configured are plain local-disk filenames with no ":" — those
+      // point at files that are already gone (ephemeral disk), so this
+      // is a harmless no-op for them rather than a real deletion.
+      const sepIndex = fileKey.indexOf(':');
+      if (sepIndex === -1) return;
+      const resourceType = fileKey.slice(0, sepIndex);
+      const publicId = fileKey.slice(sepIndex + 1);
+      try {
+        await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+      } catch (err) {
+        console.warn(`FileService: Cloudinary delete failed for "${publicId}":`, err.message);
+      }
+      return;
+    }
+
     if (this.useFirebase && this.bucket) {
       try {
         await this.bucket.file(fileKey).delete();

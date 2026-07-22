@@ -6,7 +6,9 @@
     "allowNavigation": [
       "kee-dopg.onrender.com",
       "*.onrender.com",
-      "storage.googleapis.com"
+      "storage.googleapis.com",
+      "res.cloudinary.com",
+      "*.cloudinary.com"
     ]
   }
 }
