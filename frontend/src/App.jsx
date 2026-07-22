@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { useAuth } from './context/AuthContext';
 import { getAssetUrl, downloadAsset, filenameForAsset, API_BASE } from './apiConfig';
 import PublicSite from './components/PublicSite';
@@ -19,6 +20,37 @@ import {
   Download, Fingerprint, Palette, Menu, Home, Languages,
   Wrench, Cpu, Gauge, ScanLine
 } from 'lucide-react';
+
+// Shared registry so the hardware Back button/gesture (see the
+// CapacitorApp.addListener('backButton', ...) effect in the root App
+// component below) can close whatever modal/dialog/in-progress wizard step is
+// currently on top, instead of always falling straight through to top-level
+// screen navigation. Every modal and multi-step wizard in the app registers
+// itself here via useBackHandler() while it's open; the Back listener always
+// invokes only the most-recently-opened one first (LIFO), matching how a
+// real screen/dialog stack behaves - open two things, Back closes the most
+// recent one first.
+const backHandlerStack = [];
+
+// Registers `onBack` to run once the next time hardware Back is pressed,
+// for as long as `active` is true (e.g. `showAddModal`, or `step > 1` in a
+// wizard). Automatically unregisters when `active` flips back to false or
+// the owning component unmounts, so a closed modal never intercepts Back for
+// whatever screen is now underneath it.
+function useBackHandler(active, onBack) {
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+
+  useEffect(() => {
+    if (!active) return;
+    const handler = () => onBackRef.current();
+    backHandlerStack.push(handler);
+    return () => {
+      const idx = backHandlerStack.lastIndexOf(handler);
+      if (idx !== -1) backHandlerStack.splice(idx, 1);
+    };
+  }, [active]);
+}
 
 export function cleanGoogleImageUrl(url) {
   if (!url) return '';
@@ -706,7 +738,94 @@ export default function App() {
   const [lang, setLang] = useState(localStorage.getItem('kee_lang') || 'en');
   const t = (key) => LANGUAGES[lang]?.[key] || LANGUAGES['en']?.[key] || key;
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Navigation stack for proper Android Back button / back-swipe-gesture
+  // support. This app has no router (activeTab is a flat string, switched by
+  // conditional rendering below) so the WebView's own history stack stays
+  // empty - Capacitor's default back handling then has nothing to "go back"
+  // to and just exits the app immediately from any screen. `navStack` tracks
+  // the trail of previously-visited tabs so Back can step through it instead.
+  // `setActiveTab` below replaces the raw setter everywhere it's already
+  // used/passed as a prop (28+ call sites, including deep in child views via
+  // `setActiveTab={setActiveTab}`) without needing to touch any of them.
+  const [activeTab, setActiveTabRaw] = useState('dashboard');
+  const [navStack, setNavStack] = useState([]);
+
+  const setActiveTab = (nextTab) => {
+    setActiveTabRaw((current) => {
+      if (current === nextTab) return current;
+      setNavStack((stack) => [...stack, current]);
+      return nextTab;
+    });
+  };
+
+  // Explicit "go home" - used by the Dashboard entries in the side-nav and
+  // mobile bottom-nav. Clears the trail instead of pushing onto it, so
+  // Dashboard genuinely behaves as the app's root: Back from Dashboard means
+  // "exit", never "go back into whatever screen I was on before I tapped
+  // Dashboard".
+  const resetToDashboard = () => {
+    setNavStack([]);
+    setActiveTabRaw('dashboard');
+  };
+
+  // Pops one entry off the nav stack and returns to it. If the stack is
+  // already empty (e.g. the very first screen after login), falls back to
+  // Dashboard rather than doing nothing.
+  const goBack = () => {
+    setNavStack((stack) => {
+      if (stack.length === 0) {
+        setActiveTabRaw('dashboard');
+        return stack;
+      }
+      setActiveTabRaw(stack[stack.length - 1]);
+      return stack.slice(0, -1);
+    });
+  };
+
+  // "Press Back again to exit" state - only ever shown while already on the
+  // Dashboard/home screen (see the backButton listener below).
+  const [exitPromptVisible, setExitPromptVisible] = useState(false);
+
+  useEffect(() => {
+    if (!IS_NATIVE_APP) return;
+    let exitArmed = false;
+    let exitTimer = null;
+
+    const listenerHandle = CapacitorApp.addListener('backButton', () => {
+      // Any open modal/dialog/in-progress wizard step always wins first -
+      // Back should close/step that back before ever touching screen
+      // navigation underneath it.
+      if (backHandlerStack.length > 0) {
+        setExitPromptVisible(false);
+        backHandlerStack[backHandlerStack.length - 1]();
+        return;
+      }
+
+      if (activeTab !== 'dashboard') {
+        setExitPromptVisible(false);
+        goBack();
+        return;
+      }
+
+      // Already on Dashboard/Home: standard Android double-back-to-exit.
+      if (exitArmed) {
+        CapacitorApp.exitApp();
+        return;
+      }
+      exitArmed = true;
+      setExitPromptVisible(true);
+      exitTimer = setTimeout(() => {
+        exitArmed = false;
+        setExitPromptVisible(false);
+      }, 2000);
+    });
+
+    return () => {
+      clearTimeout(exitTimer);
+      listenerHandle.then((l) => l.remove()).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, navStack]);
 
   // Shop Admin's workspace name, shown as the header page title on every
   // screen except Dashboard (which shows the live search box instead). Fetched
@@ -955,6 +1074,10 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showLangDialog, setShowLangDialog] = useState(false);
   const langDialogCardRef = useRef(null);
+  // Side-drawer and language dialog are both full-screen overlays - Back
+  // should close them, not navigate the screen underneath.
+  useBackHandler(mobileNavOpen, () => setMobileNavOpen(false));
+  useBackHandler(showLangDialog, () => setShowLangDialog(false));
 
   // Auto-close the language dialog the instant the user interacts with
   // anything outside it - another sidebar link, a header/mobile-nav button,
@@ -1007,6 +1130,12 @@ export default function App() {
   const [regError, setRegError] = useState('');
   const [regSuccessMessage, setRegSuccessMessage] = useState('');
   const [regStep, setRegStep] = useState(1); // 1: Info, 2: OTP, 3: Password & Plan, 4: Review, 5: Payment
+  // Pre-login shop signup wizard: Back steps back one stage while mid-flow,
+  // same as the authenticated CustomerRegistrationWizard above. At step 1
+  // there's nothing to intercept, so Back correctly falls through to the
+  // normal double-press-to-exit behavior (there's no screen "under" the
+  // signup form before you're logged in).
+  useBackHandler(regStep > 1, () => setRegStep((s) => Math.max(1, s - 1)));
 
   // Self-Registration OTP states
   const [regOtpSent, setRegOtpSent] = useState(false);
@@ -1074,7 +1203,7 @@ export default function App() {
     setAuthLoading(true);
     try {
       await login(authEmail, authPassword);
-      setActiveTab('dashboard');
+      resetToDashboard();
     } catch (err) {
       setAuthError(err.message || 'Login failed. Please check credentials.');
     } finally {
@@ -2281,7 +2410,7 @@ export default function App() {
             <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto' }} onClick={(e) => { if (e.target.closest('button')) setMobileNavOpen(false); }}>
               <div className="side-section-label">Overview</div>
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => resetToDashboard()}
                 className={`side-link ${activeTab === 'dashboard' ? 'active' : ''}`}
               >
                 <Sliders />
@@ -2662,7 +2791,7 @@ export default function App() {
           <nav className="mobile-bottom-nav md:hidden">
             <button
               className={`mbn-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('dashboard'); setMobileNavOpen(false); }}
+              onClick={() => { resetToDashboard(); setMobileNavOpen(false); }}
             >
               <Home />
               <span>Dashboard</span>
@@ -2695,6 +2824,32 @@ export default function App() {
               <span>Customer Service</span>
             </button>
           </nav>
+
+          {/* "Press Back again to exit" toast - shown only when the hardware
+              Back button/gesture is pressed once while already on the
+              Dashboard/home screen (see the backButton listener above). */}
+          {exitPromptVisible && createPortal(
+            <div
+              style={{
+                position: 'fixed',
+                left: '50%',
+                bottom: 88,
+                transform: 'translateX(-50%)',
+                background: 'rgba(20,18,16,0.92)',
+                color: '#fff',
+                padding: '10px 18px',
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 600,
+                zIndex: 9999,
+                pointerEvents: 'none',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.35)',
+              }}
+            >
+              Press Back again to exit
+            </div>,
+            document.body
+          )}
 
           {/* Language selection dialog (center-screen modal) */}
           {showLangDialog && createPortal(
@@ -3384,6 +3539,9 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
   const [showSubModal, setShowSubModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false); // Edit shop profile
   const [selectedShop, setSelectedShop] = useState(null);
+  useBackHandler(showAddModal, () => setShowAddModal(false));
+  useBackHandler(showSubModal, () => setShowSubModal(false));
+  useBackHandler(showEditModal, () => setShowEditModal(false));
 
   // Form States for Add Shop
   const [shopName, setShopName] = useState('');
@@ -3423,6 +3581,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
 
   // Payment integration states for new shop provision
   const [showPaymentProvisionModal, setShowPaymentProvisionModal] = useState(false);
+  useBackHandler(showPaymentProvisionModal, () => setShowPaymentProvisionModal(false));
   const [provisionDto, setProvisionDto] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -4498,6 +4657,7 @@ function SuperCustomersView({ t, api, searchDispatch }) {
   // required Shop dropdown on Step 1 (see superAdminMode prop).
   const [shops, setShops] = useState([]);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
+  useBackHandler(showCreateWizard, () => setShowCreateWizard(false));
 
   useEffect(() => {
     fetchCustomers();
@@ -4744,6 +4904,7 @@ function KeysCatalogView({ api, searchDispatch }) {
   const [keys, setKeys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  useBackHandler(showAddModal, () => setShowAddModal(false));
   const [editKey, setEditKey] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -5048,6 +5209,7 @@ function AdsManagementView({ api }) {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  useBackHandler(showAddModal, () => setShowAddModal(false));
   const [editingAdId, setEditingAdId] = useState(null);
 
   // Form states
@@ -5514,6 +5676,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  useBackHandler(showAddModal, () => setShowAddModal(false));
   const [editingId, setEditingId] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -6673,6 +6836,13 @@ function KeysSearchView({ api, searchDispatch }) {
 
 function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = [], onDone, onCancel }) {
   const [step, setStep] = useState(1);
+  // While mid-wizard (step > 1), hardware Back steps back one stage at a
+  // time instead of skipping straight past the whole wizard. At step 1
+  // there's nothing left to step back to here, so no handler is registered -
+  // Back falls through to whatever is above this wizard (closes the
+  // superAdminMode overlay via its own useBackHandler(showCreateWizard, ...),
+  // or pops the screen stack when this is the plain 'register' tab).
+  useBackHandler(step > 1, () => setStep((s) => Math.max(1, s - 1)));
   const [keysList, setKeysList] = useState([]);
 
   // Super Admin only: which shop this customer is being registered under.
@@ -8252,6 +8422,7 @@ function ShopSettingsView({ t, api }) {
   const [showPassVerifyModal, setShowPassVerifyModal] = useState(false);
   const [passVerifyInput, setPassVerifyInput] = useState('');
   const [passVerifyError, setPassVerifyError] = useState('');
+  useBackHandler(showPassVerifyModal, () => { setShowPassVerifyModal(false); setPassVerifyError(''); });
   const [passVerifyLoading, setPassVerifyLoading] = useState(false);
   const [showVerifyPass, setShowVerifyPass] = useState(false);
   const [otpShowNewPass, setOtpShowNewPass] = useState(false);
