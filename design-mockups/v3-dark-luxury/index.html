@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Key Shops — Design 3: Dark Luxury</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --gold:#F0B92B;
+    --gold-soft:#FFDA79;
+    --maroon:#A31A2C;
+    --maroon-glow:rgba(163,26,44,.35);
+    --bg:#121110;
+    --bg-2:#1A1815;
+    --line:#2B2621;
+    --text-1:#F4EEE2;
+    --text-2:#9C9384;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-1); -webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Outfit',sans-serif; margin:0;}
+  p{margin:0;}
+  a{text-decoration:none; color:inherit;}
+  img{max-width:100%; display:block;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px;}
+
+  .nav{position:sticky; top:0; z-index:50; background:rgba(18,17,16,.85); backdrop-filter:blur(10px); border-bottom:1px solid var(--line);}
+  .nav-inner{max-width:1180px; margin:0 auto; padding:18px 24px; display:flex; align-items:center; justify-content:space-between;}
+  .brand-logo{height:44px; filter:drop-shadow(0 0 14px rgba(240,185,43,.35));}
+  .nav-links{display:flex; gap:30px; font-size:14px; font-weight:600; color:var(--text-2);}
+  .nav-links a:hover{color:var(--gold);}
+  .nav-actions{display:flex; gap:12px; align-items:center;}
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:10px; font-weight:700; font-size:13.5px; cursor:pointer; border:1px solid transparent;}
+  .btn-primary{background:linear-gradient(135deg, var(--gold), #C98E12); color:#241900; box-shadow:0 10px 30px -10px rgba(240,185,43,.5);}
+  .btn-outline{border-color:var(--line); color:var(--text-1); background:rgba(255,255,255,.02);}
+  .btn-outline:hover{border-color:var(--gold); color:var(--gold);}
+  @media(max-width:840px){ .nav-links{display:none;} }
+
+  .hero{position:relative; padding:120px 24px 100px; text-align:center; overflow:hidden;}
+  .hero-glow{position:absolute; top:-200px; left:50%; transform:translateX(-50%); width:900px; height:600px; background:radial-gradient(ellipse at center, var(--maroon-glow), transparent 65%); pointer-events:none;}
+  .hero-inner{position:relative; max-width:760px; margin:0 auto;}
+  .badge{display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--bg-2); color:var(--gold-soft); font-size:13px; font-weight:600; padding:8px 18px; border-radius:999px; margin-bottom:30px;}
+  .badge .dot{width:6px; height:6px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold);}
+  .hero h1{font-size:58px; font-weight:800; line-height:1.08; letter-spacing:-1.5px; background:linear-gradient(180deg, #fff, #C9BEA6); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .hero h1 .accent{background:linear-gradient(120deg, var(--gold), var(--gold-soft)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .hero p.lead{margin:26px auto 0; max-width:520px; font-size:17px; color:var(--text-2); line-height:1.7;}
+  .hero-ctas{display:flex; gap:14px; justify-content:center; margin-top:38px;}
+  .btn-lg{padding:15px 28px; font-size:14.5px;}
+  @media(max-width:640px){ .hero h1{font-size:36px;} }
+
+  .stats{display:flex; justify-content:center; gap:64px; margin-top:76px; flex-wrap:wrap; position:relative;}
+  .stat-num{font-family:'Outfit'; font-size:32px; font-weight:800; color:var(--gold);}
+  .stat-label{font-size:12.5px; color:var(--text-2); margin-top:4px;}
+
+  .section{padding:96px 24px;}
+  .section-head{max-width:600px; margin:0 auto 56px; text-align:center;}
+  .eyebrow{display:inline-flex; gap:6px; align-items:center; color:var(--gold); font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:14px;}
+  .section-head h2{font-size:34px; font-weight:800; color:#fff;}
+  .section-head p{margin-top:14px; color:var(--text-2); font-size:15.5px;}
+
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px; max-width:1180px; margin:0 auto;}
+  @media(max-width:900px){ .grid{grid-template-columns:1fr 1fr;} }
+  @media(max-width:600px){ .grid{grid-template-columns:1fr;} }
+  .card{background:var(--bg-2); border:1px solid var(--line); border-radius:16px; padding:28px 24px; transition:.2s;}
+  .card:hover{border-color:var(--maroon); box-shadow:0 20px 40px -20px var(--maroon-glow); transform:translateY(-3px);}
+  .icon-badge{width:46px; height:46px; border-radius:12px; background:linear-gradient(135deg, var(--maroon), #6E1420); display:flex; align-items:center; justify-content:center; color:var(--gold-soft); margin-bottom:18px;}
+  .card h3{font-size:17px; font-weight:700; margin-bottom:8px; color:#fff;}
+  .card p{font-size:14px; color:var(--text-2); line-height:1.65;}
+
+  .steps{display:grid; grid-template-columns:repeat(3,1fr); gap:24px; max-width:1180px; margin:0 auto;}
+  @media(max-width:800px){ .steps{grid-template-columns:1fr;} }
+  .step{padding:30px; border:1px solid var(--line); border-radius:16px; position:relative; background:linear-gradient(160deg, var(--bg-2), var(--bg));}
+  .step-num{font-family:'Outfit'; font-size:15px; font-weight:800; color:#241900; background:var(--gold); display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; margin-bottom:16px;}
+  .step h3{font-size:17px; margin-bottom:8px; color:#fff;}
+  .step p{font-size:14px; color:var(--text-2); line-height:1.65;}
+
+  .cta-banner{max-width:1180px; margin:0 auto; background:linear-gradient(120deg, #1A1815, #241417); border:1px solid var(--maroon); border-radius:24px; padding:56px 48px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 30px 60px -30px var(--maroon-glow);}
+  .cta-banner h2{font-size:28px; font-weight:800; color:#fff;}
+  .cta-banner p{margin-top:8px; color:var(--text-2); font-size:15px;}
+
+  footer{padding:64px 24px 28px; border-top:1px solid var(--line); margin-top:40px;}
+  .footer-inner{max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; gap:40px; flex-wrap:wrap;}
+  .footer-inner .brand-logo{height:40px; margin-bottom:14px;}
+  .footer-desc{max-width:300px; font-size:13.5px; color:var(--text-2); line-height:1.7;}
+  .footer-cols{display:flex; gap:56px; flex-wrap:wrap;}
+  .footer-col h4{color:var(--gold); font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;}
+  .footer-col a, .footer-col span{display:block; font-size:14px; margin-bottom:10px; color:var(--text-2);}
+  .footer-bottom{text-align:center; margin-top:48px; padding-top:24px; border-top:1px solid var(--line); font-size:12.5px; color:#5C5548;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#"><img src="../assets/keyshop-logo.png" class="brand-logo" alt="Key Shop"></a>
+    <div class="nav-links">
+      <a href="#">Home</a><a href="#">Find a Shop</a><a href="#">About</a><a href="#">Contact</a>
+    </div>
+    <div class="nav-actions">
+      <a href="#" class="btn btn-outline"><i data-lucide="download" style="width:15px;height:15px"></i> Download App</a>
+      <a href="#" class="btn btn-primary">Login <i data-lucide="arrow-right" style="width:15px;height:15px"></i></a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-inner">
+    <span class="badge"><span class="dot"></span> Trusted by 500+ key shops across India</span>
+    <h1>Run your duplicate-key shop <span class="accent">the gold-standard way.</span></h1>
+    <p class="lead">Track duplicate keys, customers and store orders across every branch — one bold dashboard built for Indian locksmiths.</p>
+    <div class="hero-ctas">
+      <a href="#" class="btn btn-primary btn-lg">Login to your workspace <i data-lucide="arrow-right" style="width:15px;height:15px"></i></a>
+      <a href="#" class="btn btn-outline btn-lg"><i data-lucide="search" style="width:15px;height:15px"></i> Find a shop near you</a>
+    </div>
+    <div class="stats">
+      <div><div class="stat-num">500+</div><div class="stat-label">Shops onboarded</div></div>
+      <div><div class="stat-num">50k+</div><div class="stat-label">Keys duplicated</div></div>
+      <div><div class="stat-num">100+</div><div class="stat-label">Cities served</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <span class="eyebrow"><i data-lucide="sparkles" style="width:14px;height:14px"></i> Why Key Shops</span>
+    <h2>Everything a modern key shop needs</h2>
+    <p>One workspace for the front counter, the back office and everything in between.</p>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="icon-badge"><i data-lucide="users"></i></div><h3>Customer Management</h3><p>Capture ID proof, photo and key history for every walk-in, searchable in seconds.</p></div>
+    <div class="card"><div class="icon-badge"><i data-lucide="key"></i></div><h3>Key &amp; Master Catalog</h3><p>Track every blank, master key and duplicate against a shop-wide catalog that never loses a key.</p></div>
+    <div class="card"><div class="icon-badge"><i data-lucide="package"></i></div><h3>Store &amp; Inventory</h3><p>Sell hardware alongside key services and keep stock levels accurate automatically.</p></div>
+    <div class="card"><div class="icon-badge"><i data-lucide="bar-chart-3"></i></div><h3>Reports &amp; Analytics</h3><p>Daily, weekly and monthly rollups of revenue, footfall and top-selling items.</p></div>
+    <div class="card"><div class="icon-badge"><i data-lucide="building-2"></i></div><h3>Multi-Branch Ready</h3><p>Run several outlets under one account with data kept cleanly separated per shop.</p></div>
+    <div class="card"><div class="icon-badge"><i data-lucide="shield-check"></i></div><h3>Secure &amp; Encrypted</h3><p>Sensitive ID numbers are encrypted at rest; every record is tenant-isolated by design.</p></div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0;">
+  <div class="section-head">
+    <span class="eyebrow"><i data-lucide="check-circle-2" style="width:14px;height:14px"></i> Getting started</span>
+    <h2>Up and running in three steps</h2>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3>Register your shop</h3><p>Create your shop account in minutes with your basic business details.</p></div>
+    <div class="step"><div class="step-num">2</div><h3>Add your team &amp; keys</h3><p>Bring your key catalog and staff on board, no spreadsheets required.</p></div>
+    <div class="step"><div class="step-num">3</div><h3>Serve customers faster</h3><p>Register customers, cut keys and track orders from one bold dashboard.</p></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="cta-banner">
+    <div><h2>Ready to modernize your shop?</h2><p>Login if you already have an account, or find a Key Shops-powered shop near you.</p></div>
+    <div class="hero-ctas">
+      <a href="#" class="btn btn-primary">Login <i data-lucide="arrow-right" style="width:15px;height:15px"></i></a>
+      <a href="#" class="btn btn-outline">Contact us</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <img src="../assets/keyshop-logo.png" class="brand-logo" alt="Key Shop">
+      <p class="footer-desc">The bold, gold-standard workspace for Indian duplicate-key shops — customers, keys, orders and reports in one place.</p>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col"><h4>Explore</h4><a href="#">Home</a><a href="#">Find a Shop</a><a href="#">About</a><a href="#">Contact</a></div>
+      <div class="footer-col"><h4>Get in touch</h4><span>support@keyshops.app</span><span>+91 98765 43210</span><span>New Delhi, India</span></div>
+    </div>
+  </div>
+  <div class="footer-bottom">&copy; 2026 Key Shops. All rights reserved.</div>
+</footer>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

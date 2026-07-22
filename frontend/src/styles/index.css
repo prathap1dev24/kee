@@ -533,22 +533,20 @@
 .login-foot a, .login-foot button { color: var(--gold); font-weight: 800; }
 
 .login-side {
-  background: var(--bg-1);
-  border-left: 1px solid var(--border);
+  background: var(--maroon);
+  border-left: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 48px 40px; position: relative; overflow: hidden;
-  background-image: radial-gradient(circle at 1px 1px, rgba(79, 70, 229, 0.14) 1px, transparent 1px);
-  background-size: 24px 24px;
 }
 .login-side .glow {
   position: absolute; width: 420px; height: 420px; border-radius: 999px;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.16), transparent 70%);
+  background: radial-gradient(circle, rgba(245, 184, 0, 0.35), transparent 70%);
   top: -100px; right: -120px; filter: blur(10px);
 }
 .side-copy { max-width: 380px; text-align: left; margin-bottom: 38px; position: relative; z-index: 2; }
-.side-copy h2 { font-size: 32px; margin-bottom: 14px; }
-.side-copy h2 .gold-line { color: var(--gold); display: block; }
-.side-copy p { color: var(--text-2); font-size: 14.5px; font-weight: 600; line-height: 1.6; }
+.side-copy h2 { font-size: 32px; margin-bottom: 14px; color: #fff; }
+.side-copy h2 .gold-line { color: var(--gold-2); display: block; }
+.side-copy p { color: #E9D9D9; font-size: 14.5px; font-weight: 600; line-height: 1.6; }
 
 .phone-frame {
   position: relative; z-index: 2;
@@ -813,6 +811,57 @@ select.sel:focus { border-color: var(--gold); }
 
 /* ===================== Public marketing site (Home/Search/About/Contact) ===================== */
 
+/* ===================== Design 5 "Card Dashboard" brand palette =====================
+   Scoped so only the public marketing site and the pre-auth login/register
+   flow (.login-shell) pick up the maroon/gold Key Shop brand. Every reusable
+   component below (.btn, .card, .icon-badge, .pill-badge, .field, ...)
+   already reads its colors from these CSS variables, so redefining them in
+   this scope re-themes the whole public site + login screen for free while
+   the authenticated app - which never sits inside .public-site/.login-shell -
+   keeps its original indigo theme from :root untouched. */
+.public-site, .login-shell {
+  --gold: #C89416;
+  --gold-2: #F5B800;
+  --gold-dim: rgba(245, 184, 0, 0.14);
+  --bg-0: #FAF6EE;
+  --bg-1: #F7F1E2;
+  --card: #ffffff;
+  --card-2: #FBF2DA;
+  --border: rgba(122, 18, 32, 0.12);
+  --border-2: rgba(122, 18, 32, 0.22);
+  --text-0: #221D16;
+  --text-1: #2A2117;
+  --text-2: #736553;
+  --text-3: #8A7A63;
+  --maroon: #7A1220;
+  --maroon-dark: #5A0D18;
+  --black: #1E1B17;
+  background: var(--bg-0);
+}
+
+/* A handful of shared components hardcode the old indigo rgba() instead of
+   reading a variable - scoped overrides here so they follow the brand
+   palette too, without touching the base rule the authenticated app uses. */
+.public-site .btn-primary, .login-shell .btn-primary {
+  box-shadow: 0 14px 26px rgba(122, 18, 32, 0.28), 0 2px 4px rgba(122, 18, 32, 0.18);
+}
+.public-site .btn-outline, .login-shell .btn-outline {
+  border-color: rgba(122, 18, 32, 0.35);
+}
+.public-site .pill-badge, .login-shell .pill-badge {
+  border-color: rgba(245, 184, 0, 0.35);
+  animation-name: pulseGlowGold;
+}
+@keyframes pulseGlowGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 184, 0, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 184, 0, 0); }
+}
+.public-site .input-wrap input:focus, .public-site .input-wrap select:focus,
+.login-shell .input-wrap input:focus, .login-shell .input-wrap select:focus {
+  background: #FCF6E4;
+}
+.login-shell .dropzone:hover { background: #FCF6E4; }
+
 .public-site { position: relative; overflow-x: clip; }
 
 /* scroll-reveal (paired with the <Reveal> wrapper in PublicSite.jsx) */
@@ -875,30 +924,66 @@ select.sel:focus { border-color: var(--gold); }
   .public-nav-mobile { display: none; }
 }
 
-/* hero */
-.public-hero {
-  position: relative; overflow: hidden;
-  padding: 90px 28px 70px;
-  background-image: radial-gradient(circle at 1px 1px, rgba(79, 70, 229, 0.14) 1px, transparent 1px);
-  background-size: 26px 26px;
+/* topbar - thin maroon announcement strip above the nav */
+.public-topbar {
+  background: var(--maroon); color: #fff;
+  font-size: 13px; font-weight: 600; text-align: center;
+  padding: 8px 16px;
 }
-.public-hero .glow-sphere { opacity: 0.22; }
-.public-hero-inner { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; text-align: center; }
+.public-topbar b { color: var(--gold-2); }
+
+/* hero - solid maroon "hero panel" (Design 5) */
+.public-hero { position: relative; padding: 48px 28px 0; }
+.public-hero-panel {
+  max-width: 1180px; margin: 0 auto; position: relative; overflow: hidden;
+  background: var(--maroon); border-radius: 28px;
+  display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center;
+}
+@media (max-width: 860px) { .public-hero-panel { grid-template-columns: 1fr; } }
+.public-hero-panel::before {
+  content: ''; position: absolute; right: -80px; top: -80px;
+  width: 340px; height: 340px; border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-2), transparent 70%);
+  opacity: .35; pointer-events: none;
+}
+.public-hero-panel-text { padding: 64px 56px; position: relative; z-index: 1; }
+@media (max-width: 640px) { .public-hero-panel-text { padding: 48px 28px; } }
 .public-hero-title {
-  font-size: clamp(32px, 5vw, 52px); line-height: 1.1; margin: 22px 0 16px;
+  font-size: clamp(28px, 4.4vw, 42px); line-height: 1.15; letter-spacing: -.6px;
+  color: #fff; margin: 22px 0 0;
 }
-.public-hero-title .gold-line { color: var(--gold); }
+.public-hero-title .gold-line { color: var(--gold-2); }
 .public-hero-lead {
-  color: var(--text-2); font-size: 16px; font-weight: 600; line-height: 1.6;
-  max-width: 560px; margin: 0 auto 32px;
+  color: #E9D9D9; font-size: 15.5px; font-weight: 600; line-height: 1.7;
+  max-width: 420px; margin: 18px 0 0;
 }
-.public-hero-ctas { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
-.public-hero-stats {
-  display: flex; align-items: center; justify-content: center; gap: 40px;
-  margin-top: 56px; flex-wrap: wrap;
+.public-hero-ctas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+.public-hero-ghost-btn { background: rgba(255, 255, 255, .12); color: #fff; }
+.public-hero-ghost-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .2); transform: translateY(-1px); }
+.public-hero-panel-visual { padding: 40px; display: flex; justify-content: center; position: relative; z-index: 1; }
+.public-hero-panel-visual img { width: 240px; filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .35)); }
+@media (max-width: 860px) { .public-hero-panel-visual { padding: 0 40px 40px; } }
+
+/* floating stat cards, overlapping the hero panel's bottom edge */
+.public-stats-row {
+  max-width: 1180px; margin: -36px auto 0; position: relative; z-index: 2;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+  padding: 0 28px;
 }
-.public-stat-num { font-family: var(--display); font-weight: 800; font-size: 30px; color: var(--gold); }
-.public-stat-label { font-size: 12.5px; color: var(--text-2); font-weight: 700; margin-top: 4px; }
+@media (max-width: 700px) { .public-stats-row { grid-template-columns: 1fr; } }
+.public-stat-card {
+  background: var(--card); border-radius: 16px; padding: 22px 26px;
+  box-shadow: 0 16px 30px -18px rgba(30, 27, 23, .3);
+  display: flex; align-items: center; gap: 14px;
+}
+.public-stat-icon {
+  width: 42px; height: 42px; border-radius: 11px;
+  background: var(--card-2); color: var(--maroon);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.public-stat-icon svg { width: 20px; height: 20px; stroke-width: 2.2; }
+.public-stat-num { font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--text-0); }
+.public-stat-label { font-size: 12px; color: var(--text-2); font-weight: 600; margin-top: 2px; }
 
 /* generic public section */
 .public-section { max-width: 1180px; margin: 0 auto; padding: 70px 28px; }
@@ -912,30 +997,41 @@ select.sel:focus { border-color: var(--gold); }
 @media (max-width: 920px) { .public-feature-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 620px) { .public-feature-grid { grid-template-columns: 1fr; } }
 .public-feature-card { transition: transform .25s ease, border-color .25s ease; }
-.public-feature-card:hover { transform: translateY(-4px); border-color: rgba(79, 70, 229, 0.3); }
+.public-feature-card:hover { transform: translateY(-4px); border-color: rgba(122, 18, 32, 0.3); }
 .public-feature-card h3 { font-size: 16px; margin: 14px 0 6px; }
 .public-feature-card p { color: var(--text-2); font-size: 13.5px; font-weight: 600; line-height: 1.55; }
 
-/* steps */
-.public-steps-section { background: var(--bg-1); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.public-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1000px; margin: 0 auto; }
-@media (max-width: 780px) { .public-steps { grid-template-columns: 1fr; } }
-.public-step { text-align: center; padding: 0 12px; }
-.public-step-num {
-  font-family: var(--display); font-weight: 800; font-size: 34px;
-  color: var(--gold); opacity: 0.4; margin-bottom: 8px;
+/* steps - dark rounded panel (Design 5) */
+.public-steps-section {
+  background: var(--black); border: none;
+  max-width: 1180px; margin: 0 auto; border-radius: 26px; padding: 56px 48px;
 }
-.public-step h3 { font-size: 16px; margin-bottom: 6px; }
-.public-step p { color: var(--text-2); font-size: 13.5px; font-weight: 600; line-height: 1.55; }
+.public-steps-section .eyebrow { color: var(--gold-2); }
+.public-steps-section .public-section-head h2 { color: #fff; }
+.public-steps-section .public-section-head p { color: #B8AC97; }
+.public-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1000px; margin: 0 auto; }
+@media (max-width: 780px) { .public-steps { grid-template-columns: 1fr; } }
+.public-step { text-align: left; padding: 0 0 0 20px; border-left: 2px solid var(--gold-2); }
+.public-step-num {
+  font-family: var(--display); font-weight: 800; font-size: 13px;
+  color: var(--gold-2); opacity: 1; margin-bottom: 8px; letter-spacing: .04em;
+}
+.public-step h3 { font-size: 16.5px; color: #fff; margin-bottom: 6px; }
+.public-step p { color: #B8AC97; font-size: 13.5px; font-weight: 600; line-height: 1.6; }
 
-/* cta banner */
+/* cta banner - gold gradient (Design 5) */
 .public-cta-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   flex-wrap: wrap; padding: 36px;
-  background: linear-gradient(135deg, var(--card), var(--card-2));
+  background: linear-gradient(90deg, var(--gold-2), #F0CE5C);
+  border-color: transparent;
 }
-.public-cta-banner h2 { font-size: 22px; margin-bottom: 6px; }
-.public-cta-banner p { color: var(--text-2); font-size: 14px; font-weight: 600; }
+.public-cta-banner h2 { font-size: 22px; margin-bottom: 6px; color: var(--maroon-dark); }
+.public-cta-banner p { color: #6B4E00; font-size: 14px; font-weight: 600; }
+.public-cta-banner .btn-primary { background: var(--maroon-dark); color: #fff; box-shadow: none; }
+.public-cta-banner .btn-primary:hover:not(:disabled) { filter: brightness(1.18); }
+.public-cta-banner .btn-outline { background: #fff; color: var(--maroon-dark); border-color: transparent; }
+.public-cta-banner .btn-outline:hover:not(:disabled) { background: #F7EFD6; }
 
 /* search page */
 .public-search-box-wrap { max-width: 640px; margin: 0 auto 36px; }
@@ -962,6 +1058,7 @@ select.sel:focus { border-color: var(--gold); }
 .public-contact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 32px; }
 @media (max-width: 780px) { .public-contact-grid { grid-template-columns: 1fr; } }
 .public-contact-card { text-align: center; }
+.public-contact-card .icon-badge { margin: 0 auto; }
 .public-contact-card h3 { font-size: 15px; margin: 12px 0 4px; }
 .public-contact-card p { color: var(--text-2); font-size: 13.5px; font-weight: 600; }
 .public-contact-form-card { max-width: 560px; margin: 0 auto; }

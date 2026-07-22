@@ -61,29 +61,6 @@ function Reveal({ children, className = '', delay = 0, as: Tag = 'div' }) {
   );
 }
 
-// Classic scroll-parallax: translates an element vertically at a fraction of
-// scroll speed, so background glow blobs drift slower than the page content.
-function useParallax(factor = 0.2) {
-  const ref = useRef(null);
-  useEffect(() => {
-    let raf = null;
-    const onScroll = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (ref.current) {
-          ref.current.style.transform = `translate3d(0, ${window.scrollY * factor}px, 0)`;
-        }
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [factor]);
-  return ref;
-}
-
 const NAV_ITEMS = [
   { key: 'home', label: 'Home' },
   { key: 'search', label: 'Find a Shop' },
@@ -188,9 +165,6 @@ function PublicFooter({ onNavigate }) {
 }
 
 function HomePage({ onNavigate }) {
-  const blobA = useParallax(0.18);
-  const blobB = useParallax(-0.12);
-
   const features = [
     { icon: Users, title: 'Customer Management', desc: 'Capture ID proof, photo and key history for every walk-in, searchable in seconds.' },
     { icon: Key, title: 'Key & Master Catalog', desc: 'Track every blank, master key and duplicate against a shop-wide catalog that never loses a key.' },
@@ -209,55 +183,66 @@ function HomePage({ onNavigate }) {
   return (
     <>
       <section className="public-hero">
-        <div ref={blobA} className="glow-sphere glow-purple" style={{ position: 'absolute' }}></div>
-        <div ref={blobB} className="glow-sphere glow-blue" style={{ position: 'absolute' }}></div>
-
-        <div className="public-hero-inner">
-          <Reveal>
-            <span className="pill-badge">
-              <span className="dot"></span>
-              Trusted by 500+ key shops across India
-            </span>
-          </Reveal>
-          <Reveal delay={80}>
-            <h1 className="public-hero-title">
-              Run your duplicate-key shop
-              <span className="gold-line"> the smart, gold-standard way.</span>
-            </h1>
-          </Reveal>
-          <Reveal delay={160}>
-            <p className="public-hero-lead">
-              Track duplicate keys, customers and store orders across every branch &mdash;
-              one bold dashboard built for Indian locksmiths.
-            </p>
-          </Reveal>
-          <Reveal delay={240}>
-            <div className="public-hero-ctas">
-              <button type="button" className="btn btn-primary" onClick={() => onNavigate('login')}>
-                Login to your workspace <ArrowRight className="h-4 w-4" />
-              </button>
-              <button type="button" className="btn btn-outline" onClick={() => onNavigate('search')}>
-                <Search className="h-4 w-4" /> Find a shop near you
-              </button>
-            </div>
-          </Reveal>
-
-          <Reveal delay={320} className="public-hero-stats">
-            <div>
-              <div className="public-stat-num">500+</div>
-              <div className="public-stat-label">Shops onboarded</div>
-            </div>
-            <div>
-              <div className="public-stat-num">50k+</div>
-              <div className="public-stat-label">Keys duplicated</div>
-            </div>
-            <div>
-              <div className="public-stat-num">100+</div>
-              <div className="public-stat-label">Cities served</div>
-            </div>
-          </Reveal>
+        <div className="public-hero-panel">
+          <div className="public-hero-panel-text">
+            <Reveal>
+              <span className="pill-badge">
+                <span className="dot"></span>
+                Trusted by 500+ key shops across India
+              </span>
+            </Reveal>
+            <Reveal delay={80}>
+              <h1 className="public-hero-title">
+                Run your duplicate-key shop
+                <span className="gold-line"> the smart, gold-standard way.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={160}>
+              <p className="public-hero-lead">
+                Track duplicate keys, customers and store orders across every branch &mdash;
+                one bold dashboard built for Indian locksmiths.
+              </p>
+            </Reveal>
+            <Reveal delay={240}>
+              <div className="public-hero-ctas">
+                <button type="button" className="btn btn-primary" onClick={() => onNavigate('login')}>
+                  Login to your workspace <ArrowRight className="h-4 w-4" />
+                </button>
+                <button type="button" className="btn public-hero-ghost-btn" onClick={() => onNavigate('search')}>
+                  <Search className="h-4 w-4" /> Find a shop near you
+                </button>
+              </div>
+            </Reveal>
+          </div>
+          <div className="public-hero-panel-visual">
+            <img src={keyShopLogo} alt="Key Shop" />
+          </div>
         </div>
       </section>
+
+      <Reveal delay={320} className="public-stats-row">
+        <div className="public-stat-card">
+          <div className="public-stat-icon"><Store /></div>
+          <div>
+            <div className="public-stat-num">500+</div>
+            <div className="public-stat-label">Shops onboarded</div>
+          </div>
+        </div>
+        <div className="public-stat-card">
+          <div className="public-stat-icon"><Key /></div>
+          <div>
+            <div className="public-stat-num">50k+</div>
+            <div className="public-stat-label">Keys duplicated</div>
+          </div>
+        </div>
+        <div className="public-stat-card">
+          <div className="public-stat-icon"><MapPin /></div>
+          <div>
+            <div className="public-stat-num">100+</div>
+            <div className="public-stat-label">Cities served</div>
+          </div>
+        </div>
+      </Reveal>
 
       <section className="public-section">
         <Reveal className="public-section-head">
@@ -558,6 +543,7 @@ export default function PublicSite({ page, onNavigate, api }) {
 
   return (
     <div className="public-site">
+      <div className="public-topbar">The <b>Super Admin</b> web console &mdash; Shop Admins, get the app below.</div>
       <PublicNav page={page} onNavigate={onNavigate} />
       {page === 'search' ? (
         <SearchPage api={api} />
