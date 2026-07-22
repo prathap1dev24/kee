@@ -82,6 +82,7 @@
 }
 .brand .mark svg { width: 20px; height: 20px; stroke-width: 2.6; }
 .brand .gold-dot { color: var(--gold); }
+.brand-logo { height: 44px; width: auto; object-fit: contain; display: block; }
 
 .navtabs {
   position: relative;
@@ -179,7 +180,7 @@
 
 /* screens / layout */
 .wrap { max-width: 1280px; margin: 0 auto; padding: 36px 28px 80px; }
-.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .page-head > div:first-child { flex: 1 1 0%; min-width: 0; }
 .page-head h1 { font-size: 30px; }
 .page-head p { color: var(--text-2); font-size: 14.5px; margin-top: 4px; }
@@ -245,6 +246,52 @@
 .icon-badge.green { background: var(--green-dim); color: var(--green); }
 .icon-badge.red { background: var(--red-dim); color: var(--red); }
 .icon-badge.solid { background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; }
+/* Product-photo cards (Used Machines / ECM / Meter / Scanning Service) get a
+   much bigger image area than the normal 44px icon badge - full card width,
+   fixed height, image centered and shown in full via object-fit: contain
+   (never cropped), which in turn makes .dash-card taller since it's a flex
+   column that just grows to fit its content. */
+.icon-badge.photo {
+  width: 100%; height: 140px; border-radius: 14px;
+  padding: 6px; overflow: hidden; background: var(--card-2);
+  align-self: stretch;
+}
+.icon-badge.photo img {
+  width: 100%; height: 100%; object-fit: contain; object-position: center;
+  border-radius: 10px; display: block;
+}
+@media (max-width: 640px) {
+  .icon-badge.photo { height: 110px; }
+}
+.icon-badge.flat-icon { background: #EAF4FD; padding: 5px; }
+.icon-badge.flat-icon svg { width: 100%; height: 100%; }
+/* Same footprint as .icon-badge.photo (full card width, 140px tall) but for
+   cards that show a lucide icon or the flat AddCustomerIcon instead of a
+   photo - lets non-photo cards (New Customer, Search Keys, ...) sit in the
+   same grid as the product-photo cards at a matching size, per request to
+   make all dashboard cards a consistent large size. */
+.icon-badge.big {
+  width: 100%; height: 140px; border-radius: 14px;
+  padding: 6px; background: var(--card-2);
+  align-self: stretch;
+}
+.icon-badge.big svg { width: 64px; height: 64px; stroke-width: 1.8; }
+.icon-badge.big.flat-icon { background: #EAF4FD; padding: 16px; }
+.icon-badge.big.flat-icon svg { width: 100%; height: 100%; }
+@media (max-width: 640px) {
+  .icon-badge.big { height: 110px; }
+}
+/* Compact variant - used by full-width dashboard shortcut cards (Customer
+   Config, Customer Support) that need a noticeably smaller height than the
+   regular product/quick-action cards while keeping the same rounded, padded
+   card design and spacing. */
+.icon-badge.big.compact, .icon-badge.photo.compact {
+  height: 64px;
+}
+.icon-badge.big.compact svg { width: 32px; height: 32px; }
+@media (max-width: 640px) {
+  .icon-badge.big.compact, .icon-badge.photo.compact { height: 56px; }
+}
 
 /* stat grid */
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 28px; }
@@ -530,9 +577,17 @@
 .phone-row .l2 { width: 45%; height: 6px; background: #edeff6; border-radius: 4px; }
 
 /* dashboard info cards: product category shortcuts, quick actions, subscription/inventory shortcuts */
-.dash-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 28px; }
+/* Only trailing spacing is needed - the compact dashboard layout (see
+   DashboardView) has a single card grid with nothing below it, so the old
+   28px bottom margin (meant to separate stacked sections) just left dead
+   space at the end of the page. */
+.dash-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 8px; }
+/* Full-width dashboard cards (Customer Config, Customer Support) span both
+   grid columns so they stretch the entire dashboard width instead of sitting
+   in a single half-width cell. */
+.dash-card-full { grid-column: 1 / -1; }
 .dash-card {
-  display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
   background: var(--card); border: 1px solid var(--border);
   border-radius: 18px; padding: 18px;
   box-shadow: 0 20px 40px rgba(30, 41, 59, 0.1), 0 2px 6px rgba(30, 41, 59, 0.06);
@@ -543,8 +598,8 @@
   width: 100%;
 }
 .dash-card:hover { transform: translateY(-3px); border-color: rgba(240, 185, 11, 0.4); background: #f4f6fb; }
-.dash-card-title { font-family: var(--display); font-weight: 800; color: var(--text-0); font-size: 14.5px; line-height: 1.25; }
-.dash-card-desc { font-size: 12.5px; color: var(--text-2); font-weight: 600; line-height: 1.4; }
+.dash-card-title { font-family: var(--display); font-weight: 800; color: var(--text-0); font-size: 14.5px; line-height: 1.25; width: 100%; }
+.dash-card-desc { font-size: 12.5px; color: var(--text-2); font-weight: 600; line-height: 1.4; width: 100%; }
 
 /* quick actions */
 .quick-actions { display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }

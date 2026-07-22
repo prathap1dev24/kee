@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Kee</string>
-    <string name="title_activity_main">Kee</string>
+    <string name="app_name">Key Shop</string>
+    <string name="title_activity_main">Key Shop</string>
     <string name="package_name">com.kee.app</string>
     <string name="custom_url_scheme">com.kee.app</string>
 </resources>

@@ -1,6 +1,6 @@
 {
   "appId": "com.kee.app",
-  "appName": "Kee",
+  "appName": "Key Shop",
   "webDir": "dist",
   "server": {
     "allowNavigation": [

@@ -21,6 +21,18 @@ import {
   Wrench, Cpu, Gauge, ScanLine
 } from 'lucide-react';
 
+// Product photos shown on the Dashboard's product-type cards instead of the
+// generic line icons below - see DASHBOARD_PRODUCT_CARDS. Swap these .png
+// files (src/assets/dashboard-icons/) to change the pictures; the .png
+// versions have their black studio background keyed out to transparency
+// (see scripts/remove-black-bg.cjs) so they sit cleanly on the card.
+import usedMachinesImg from './assets/dashboard-icons/used-machines.png';
+import ecmServiceImg from './assets/dashboard-icons/ecm-service.png';
+import meterServiceImg from './assets/dashboard-icons/meter-service.png';
+import scanningServiceImg from './assets/dashboard-icons/scanning-service.png';
+import customerSupportIcon from './assets/dashboard-icons/customer-support.png';
+import keyShopLogo from './assets/branding/keyshop-logo.png';
+
 // Shared registry so the hardware Back button/gesture (see the
 // CapacitorApp.addListener('backButton', ...) effect in the root App
 // component below) can close whatever modal/dialog/in-progress wizard step is
@@ -366,7 +378,7 @@ const LANGUAGES = {
     reports: 'Reports',
     settings: 'Shop Settings',
     logout: 'Log Out',
-    welcome: 'KEE WORKSPACE',
+    welcome: 'KEY SHOP WORKSPACE',
     superAdmin: 'Super Admin',
     shopTerminal: 'Shop Terminal',
   },
@@ -668,7 +680,7 @@ async function openDeviceLocationSettings() {
 // from a "permanently denied" (Android "Don't ask again") runtime permission
 // - once that state is hit, requestPermissions() resolves as denied instantly
 // without ever showing the OS prompt again, so the app has to hand the user
-// off to Settings > Apps > KEE > Permissions manually.
+// off to Settings > Apps > Key Shop > Permissions manually.
 async function openAppSettings() {
   if (!IS_NATIVE_APP) return;
   try {
@@ -830,7 +842,7 @@ export default function App() {
   // Shop Admin's workspace name, shown as the header page title on every
   // screen except Dashboard (which shows the live search box instead). Fetched
   // once via the existing shop-settings endpoint - Super Admin has no shop, so
-  // the header falls back to the static "KEE" brand name for that role instead.
+  // the header falls back to the static "Key Shop" brand name for that role instead.
   const [shopDisplayName, setShopDisplayName] = useState('');
   useEffect(() => {
     if (!isAuthenticated || user?.role === 'SUPER_ADMIN') return;
@@ -1054,7 +1066,7 @@ export default function App() {
   // The header no longer shows the page title as text (replaced by the global
   // search panel below), but the browser tab title still reflects it.
   useEffect(() => {
-    document.title = PAGE_TITLES[activeTab] ? `${PAGE_TITLES[activeTab]} | KEE` : 'KEE';
+    document.title = PAGE_TITLES[activeTab] ? `${PAGE_TITLES[activeTab]} | Key Shop` : 'Key Shop';
   }, [activeTab, lang]);
 
   // Public (unauthenticated) marketing site page: home | search | about | contact | login.
@@ -1413,8 +1425,7 @@ export default function App() {
       <div className="flex h-screen items-center justify-center" style={{ background: 'var(--bg-0)' }}>
         <div className="flex flex-col items-center gap-5 animate-fade-in">
           <div className="brand">
-            <span className="mark"><Key /></span>
-            Kee<span className="gold-dot">.</span>
+            <img src={keyShopLogo} alt="Key Shop" className="brand-logo" />
           </div>
           <RefreshCw className="h-6 w-6 animate-spin" style={{ color: 'var(--gold)' }} />
           <p style={{ color: 'var(--text-3)' }} className="text-sm font-semibold">Bootstrapping your workspace&hellip;</p>
@@ -1445,7 +1456,7 @@ export default function App() {
               <div className="phone-notch"></div>
               <div className="phone-screen">
                 <div className="p-head">
-                  <span className="p-title">Kee Dashboard</span>
+                  <span className="p-title">Key Shop Dashboard</span>
                   <span className="phone-badge"></span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1487,8 +1498,7 @@ export default function App() {
                 </button>
               )}
               <div className="brand">
-                <span className="mark"><Key /></span>
-                Kee<span className="gold-dot">.</span>
+                <img src={keyShopLogo} alt="Key Shop" className="brand-logo" />
               </div>
               <h1>Welcome back</h1>
               <p className="lead">Sign in to run your duplicate-key shop &mdash; orders, customers and inventory, all in one place.</p>
@@ -1507,7 +1517,7 @@ export default function App() {
                     <Mail />
                     <input
                       type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)}
-                      placeholder="admin@kee.com or shop@kee.com"
+                      placeholder="admin@keyshop.com or shop@keyshop.com"
                     />
                   </div>
                 </div>
@@ -1546,7 +1556,7 @@ export default function App() {
                   type="submit" disabled={authLoading}
                   className="btn btn-primary btn-block"
                 >
-                  {authLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <>Sign in to Kee <ArrowRight /></>}
+                  {authLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <>Sign in to Key Shop <ArrowRight /></>}
                 </button>
               </form>
 
@@ -1648,7 +1658,7 @@ export default function App() {
                           required
                           value={resetIdentifier}
                           onChange={(e) => setResetIdentifier(e.target.value)}
-                          placeholder={resetMethod === 'email' ? 'e.g. shop@kee.com' : 'e.g. +91 99999 99999'}
+                          placeholder={resetMethod === 'email' ? 'e.g. shop@keyshop.com' : 'e.g. +91 99999 99999'}
                         />
                       </div>
                     </div>
@@ -2371,8 +2381,7 @@ export default function App() {
           >
             <div className="brand" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ display: 'flex', alignItems: 'center' }}>
-                <span className="mark"><Key /></span>
-                Kee<span className="gold-dot">.</span>
+                <img src={keyShopLogo} alt="Key Shop" className="brand-logo" />
               </span>
               <button className="icon-btn md:hidden" onClick={() => setMobileNavOpen(false)}>
                 <X />
@@ -2675,7 +2684,7 @@ export default function App() {
                   // No search panel on this screen - fill the otherwise-empty
                   // header center with workspace context instead of blank space.
                   <div className="header-page-title truncate">
-                    {user.role === 'SUPER_ADMIN' ? 'KEE' : (shopDisplayName || user.name)}
+                    {user.role === 'SUPER_ADMIN' ? 'Key Shop' : (shopDisplayName || user.name)}
                   </div>
                 )}
               </div>
@@ -2912,18 +2921,38 @@ export default function App() {
 // dashboards. `type` values must exactly match entries in PRODUCT_TYPES (see
 // PromotionsFeed below) so tapping a card can route straight into the
 // Inventory screen pre-filtered to that category via searchDispatch.
+// Flat two-tone "add customer" glyph (light-blue head/shoulders + a white
+// plus-badge) used on the New/Add Customer cards on both dashboards,
+// mirroring the look of the reference design the user asked for. This is
+// original vector artwork drawn from scratch (plain circles/paths), not a
+// copy of any third-party icon asset, so it carries none of the licensing
+// concerns that reusing someone else's app screenshot/icon file would.
+function AddCustomerIcon() {
+  return (
+    <svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="30" cy="22" r="13" fill="#29B6F6" />
+      <path d="M8 56c0-13.3 9.8-21 22-21s22 7.7 22 21" fill="#1E88E5" />
+      <circle cx="47" cy="45" r="13" fill="#ffffff" stroke="#1565C0" strokeWidth="3" />
+      <path d="M47 39v12M41 45h12" stroke="#1565C0" strokeWidth="3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 const DASHBOARD_PRODUCT_CARDS = [
-  { type: 'Used Machines', icon: Wrench, description: 'View and manage used machines' },
-  { type: 'ECM Service', icon: Cpu, description: 'Manage ECM service records' },
-  { type: 'Meter Service', icon: Gauge, description: 'Track and manage meter services' },
-  { type: 'Scanning Service', icon: ScanLine, description: 'Scan & process compliance entries' },
+  { type: 'Used Machines', icon: Wrench, image: usedMachinesImg, description: 'View and manage used machines' },
+  { type: 'ECM Service', icon: Cpu, image: ecmServiceImg, description: 'Manage ECM service records' },
+  { type: 'Meter Service', icon: Gauge, image: meterServiceImg, description: 'Track and manage meter services' },
+  { type: 'Scanning Service', icon: ScanLine, image: scanningServiceImg, description: 'Scan & process compliance entries' },
 ];
 
 // Generic 2-column "info card" grid used across the dashboards - an icon
 // badge top-left, a bold title, and a short description underneath. Used for
 // the product-type shortcuts, the shop-admin quick actions, and the
 // subscription/inventory shortcuts so all of these read as one consistent
-// card language.
+// card language. When an item provides an `image` (see
+// DASHBOARD_PRODUCT_CARDS), that photo fills the badge instead of the
+// lucide icon, so cards like "Used Machines" show an actual product photo
+// rather than a generic outline glyph.
 function DashCardGrid({ items }) {
   return (
     <div className="dash-card-grid">
@@ -2931,13 +2960,19 @@ function DashCardGrid({ items }) {
         const Icon = item.icon;
         return (
           <button
-            key={item.title}
+            key={idx}
             type="button"
-            className="dash-card animate-fade-in"
+            className={`dash-card animate-fade-in${item.fullWidth ? ' dash-card-full' : ''}`}
             style={{ animationDelay: `${idx * 0.05}s` }}
             onClick={item.onClick}
           >
-            <div className={`icon-badge${item.iconVariant ? ` ${item.iconVariant}` : ''}`}><Icon /></div>
+            {item.image ? (
+              <div className={`icon-badge photo${item.compact ? ' compact' : ''}`}>
+                <img src={item.image} alt="" />
+              </div>
+            ) : (
+              <div className={`icon-badge big${item.iconVariant ? ` ${item.iconVariant}` : ''}${item.compact ? ' compact' : ''}`}><Icon /></div>
+            )}
             <div className="dash-card-title">{item.title}</div>
             <div className="dash-card-desc">{item.description}</div>
           </button>
@@ -2951,7 +2986,6 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
   const { user, api } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeDetail, setActiveDetail] = useState(null); // Interactive details drawer
   const [activePopupAd, setActivePopupAd] = useState(null);
 
   // Tapping a product-type card jumps to the Inventory screen and
@@ -3016,209 +3050,29 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
     );
   }
 
-  const toggleDetail = (card) => {
-    setActiveDetail(activeDetail === card ? null : card);
-  };
-
   if (user.role === 'SUPER_ADMIN') {
-    const totalRevenue = data.revenue.reduce((acc, r) => acc + r.amount, 0) + (data.subscriptionRevenue || 0);
     return (
       <div className="animate-fade-in">
         <div className="page-head">
           <div>
             <div className="eyebrow"><Shield /> Super Admin Control</div>
             <h1>Welcome back, {(user.name || 'Admin').split(' ')[0]} 👋</h1>
-            <p>{t('superAdmin')} Portal — platform overview across every tenant shop. Click a card to drill in.</p>
+            <p>{t('superAdmin')} Portal — platform overview across every tenant shop.</p>
           </div>
         </div>
 
-        {/* Product Category Shortcuts - tap to jump to Inventory pre-filtered by type */}
-        <DashCardGrid items={DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, onClick: () => goToProductType(c.type) }))} />
-
-        {/* Shops Registered + Compliance Registry - 50/50 side by side, mirrors Shop Admin's "stat-grid two" layout */}
-        <div className="stat-grid two">
-          <div
-            onClick={() => toggleDetail('shops')}
-            className="stat-card"
-            style={{ animationDelay: '0.05s', cursor: 'pointer', ...(activeDetail === 'shops' ? { borderColor: 'rgba(240,185,11,0.5)' } : {}) }}
-          >
-            <div className="stat-top">
-              <div className="icon-badge"><Layers /></div>
-              <ChevronRight style={{ width: 16, height: 16, color: 'var(--text-3)', transform: activeDetail === 'shops' ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
-            </div>
-            <div className="stat-num"><CountUp value={data.shops.total} /></div>
-            <div className="stat-label">{t('shopsRegistered')}</div>
-          </div>
-
-          <div
-            onClick={() => toggleDetail('customers')}
-            className="stat-card"
-            style={{ animationDelay: '0.15s', cursor: 'pointer', ...(activeDetail === 'customers' ? { borderColor: 'rgba(240,185,11,0.5)' } : {}) }}
-          >
-            <div className="stat-top">
-              <div className="icon-badge green"><Users /></div>
-              <ChevronRight style={{ width: 16, height: 16, color: 'var(--text-3)', transform: activeDetail === 'customers' ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
-            </div>
-            <div className="stat-num"><CountUp value={data.stats.customers} /></div>
-            <div className="stat-label">{t('complianceRegistry')}</div>
-          </div>
-        </div>
-
-        {/* New Customer (matches Shop Admin's Quick Action card) + Annual Revenue - 50/50 side by side */}
-        <div className="dash-card-grid">
-          <button
-            type="button"
-            className="dash-card animate-fade-in"
-            style={{ animationDelay: '0.05s' }}
-            onClick={() => setActiveTab('super-customers')}
-          >
-            <div className="icon-badge"><UserPlus /></div>
-            <div className="dash-card-title">New Customer</div>
-            <div className="dash-card-desc">Register a compliance entry for new customer</div>
-          </button>
-
-          <div
-            onClick={() => toggleDetail('revenue')}
-            className="stat-card"
-            style={{ animationDelay: '0.15s', cursor: 'pointer', ...(activeDetail === 'revenue' ? { borderColor: 'rgba(240,185,11,0.5)' } : {}) }}
-          >
-            <div className="stat-top">
-              <div className="icon-badge green"><IndianRupee /></div>
-              <ChevronRight style={{ width: 16, height: 16, color: 'var(--text-3)', transform: activeDetail === 'revenue' ? 'rotate(90deg)' : 'none', transition: 'transform .2s ease' }} />
-            </div>
-            <div className="stat-num"><CountUp value={totalRevenue} decimals={2} prefix="Rs. " /></div>
-            <div className="stat-label">{t('annualRevenue')}</div>
-          </div>
-        </div>
-
-        {/* Expandable Interactions Section */}
-        {activeDetail && (
-          <div className="card animate-fade-in" style={{ marginBottom: 28, borderColor: 'rgba(240,185,11,0.3)' }}>
-            <div className="section-title">
-              <h2 style={{ fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Info style={{ width: 16, height: 16, color: 'var(--gold)' }} />
-                Interactive Summary: {activeDetail}
-              </h2>
-              <button onClick={() => setActiveDetail(null)} className="icon-btn"><X /></button>
-            </div>
-
-            {activeDetail === 'shops' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="loc-box">
-                  <div className="loc-info">
-                    <div className="icon-badge green"><BadgeCheck /></div>
-                    <div className="loc-text">
-                      <div className="t1">{data.shops.active} Shops</div>
-                      <div className="t2">Active tiers</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="loc-box">
-                  <div className="loc-info">
-                    <div className="icon-badge red"><X /></div>
-                    <div className="loc-text">
-                      <div className="t1">{data.shops.inactive} Shops</div>
-                      <div className="t2">Suspended tiers</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeDetail === 'customers' && (
-              <div style={{ fontSize: 13.5, color: 'var(--text-2)', fontWeight: 600, lineHeight: 1.6 }}>
-                <p>Compliance entries are indexed and secured using AES-256 application-level encryption.</p>
-                <p style={{ marginTop: 6 }}>Average transaction rate: <b style={{ color: 'var(--text-0)' }}>{(data.stats.customers / 30).toFixed(1)} / day</b></p>
-              </div>
-            )}
-
-            {activeDetail === 'revenue' && (
-              <div>
-                <div className="loc-box" style={{ marginBottom: 14 }}>
-                  <div className="loc-info">
-                    <div className="icon-badge green"><Wallet /></div>
-                    <div className="loc-text">
-                      <div className="t1">Rs. {data.subscriptionRevenue || 0}</div>
-                      <div className="t2">Total subscription collections</div>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
-                  Manual revenue records split
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
-                  {data.revenue.map(r => (
-                    <div key={r.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 12, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 700, color: 'var(--text-1)' }}>
-                      <span>M{r.month}/{r.year}</span>
-                      <span style={{ color: 'var(--green)', fontWeight: 800 }}>Rs. {r.amount}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Dashboard Grid */}
-        <div className="grid-2">
-          <div className="card chart-card">
-            <div className="section-title">
-              <h2>Platform-Wide Key Popularity</h2>
-              <span className="sub">Top duplicate key numbers cut across all shops</span>
-            </div>
-            {data.popularKeys.length === 0 ? (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13, fontWeight: 600 }}>
-                No key blank transactions logged yet.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {data.popularKeys.map((k) => (
-                  <div key={k.keyNumber}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
-                      <span style={{ color: 'var(--text-1)' }}>{k.keyNumber}</span>
-                      <span style={{ color: 'var(--gold)' }}>{k.count} cuts</span>
-                    </div>
-                    <div style={{ width: '100%', background: 'var(--card-2)', height: 8, borderRadius: 999, overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          background: 'linear-gradient(90deg, var(--gold), #3730a3)',
-                          height: '100%',
-                          borderRadius: 999,
-                          width: `${(k.count / data.popularKeys[0].count) * 100}%`,
-                          transition: 'width 1s cubic-bezier(.2,.7,.3,1)',
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="card">
-            <div className="section-title">
-              <h2>Subscriptions Expiring Soon</h2>
-              <AlertTriangle style={{ width: 16, height: 16, color: 'var(--gold)' }} className="animate-pulse" />
-            </div>
-            {data.expiringSubscriptions.length === 0 ? (
-              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13, fontWeight: 600 }}>
-                No active subscriptions expiring in the next 10 days.
-              </div>
-            ) : (
-              <div className="feed">
-                {data.expiringSubscriptions.map(s => (
-                  <div key={s.id} className="feed-item">
-                    <div className="feed-icon"><Calendar /></div>
-                    <div style={{ flex: 1 }}>
-                      <div className="feed-text"><b>{s.shopName}</b> — {s.plan} plan</div>
-                      <div className="feed-time">Ends {new Date(s.endDate).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Compact, approved dashboard layout - only the essential shortcut
+            cards, no reports/lists/charts below. New Customer first, then
+            Shops (2nd card), then the 4 product-category shortcuts (6 cards
+            = exactly 3 full rows in the 2-column grid), then a full-width,
+            shorter Customer Support card spanning both columns. All cards
+            share the same size/spacing via DashCardGrid. */}
+        <DashCardGrid items={[
+          { title: 'New Customer', description: 'Register a compliance entry for new customer', icon: AddCustomerIcon, iconVariant: 'flat-icon', onClick: () => setActiveTab('super-customers') },
+          { title: 'Shops', description: 'View and manage every registered shop', icon: Store, onClick: () => setActiveTab('shops') },
+          ...DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, image: c.image, onClick: () => goToProductType(c.type) })),
+          { title: 'Customer Support', description: 'Manage the customer support contact & resources', image: customerSupportIcon, fullWidth: true, compact: true, onClick: () => setActiveTab('support-config') },
+        ]} />
       </div>
     );
   }
@@ -3250,7 +3104,7 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
             <div>
               <p style={{ fontFamily: 'var(--display)', fontWeight: 700, color: 'var(--text-0)', fontSize: 14 }}>Subscription Renewal Required!</p>
               <p style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>
-                Your shop subscription expires in <b style={{ color: 'var(--gold)' }}>{sub.daysRemaining} days</b>. Please coordinate renewal with KEE Super Admin.
+                Your shop subscription expires in <b style={{ color: 'var(--gold)' }}>{sub.daysRemaining} days</b>. Please coordinate renewal with Key Shop Super Admin.
               </p>
             </div>
           </div>
@@ -3261,196 +3115,17 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
         </div>
       )}
 
-      {/* Product Category Shortcuts - tap to jump to Inventory pre-filtered by type */}
-      <DashCardGrid items={DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, onClick: () => goToProductType(c.type) }))} />
-
-      {/* Quick Actions */}
+      {/* Compact, approved dashboard layout - only the essential shortcut cards,
+          no reports/lists/charts below. One combined grid so every card shares
+          the same size/spacing: Quick Actions (New Customer, Search Keys), the
+          4 product-category shortcuts, then a full-width, shorter Customer
+          Support card spanning both columns. */}
       <DashCardGrid items={[
-        { title: 'New Customer', description: 'Register a compliance entry for new customer', icon: UserPlus, onClick: () => setActiveTab('register') },
+        { title: 'New Customer', description: 'Register a compliance entry for new customer', icon: AddCustomerIcon, iconVariant: 'flat-icon', onClick: () => setActiveTab('register') },
         { title: 'Search Keys', description: 'Find and digitize key records quickly', icon: Search, onClick: () => setActiveTab('search-keys') },
+        ...DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, image: c.image, onClick: () => goToProductType(c.type) })),
+        { title: 'Customer Support', description: 'Get help & view support contact details', image: customerSupportIcon, fullWidth: true, compact: true, onClick: () => setActiveTab('customer-care') },
       ]} />
-
-      {/* Shop KPI Cards */}
-      <div className="stat-grid two">
-        <div
-          onClick={() => toggleDetail('today')}
-          className="stat-card"
-          style={{ animationDelay: '0.05s', cursor: 'pointer', ...(activeDetail === 'today' ? { borderColor: 'rgba(240,185,11,0.5)' } : {}) }}
-        >
-          <div className="stat-top">
-            <div className="icon-badge green"><UserPlus /></div>
-          </div>
-          <div className="stat-num"><CountUp value={data.todayCustomers} /></div>
-          <div className="stat-label">Today's Registrations</div>
-        </div>
-
-        <div
-          onClick={() => toggleDetail('total')}
-          className="stat-card"
-          style={{ animationDelay: '0.15s', cursor: 'pointer', ...(activeDetail === 'total' ? { borderColor: 'rgba(240,185,11,0.5)' } : {}) }}
-        >
-          <div className="stat-top">
-            <div className="icon-badge"><Users /></div>
-          </div>
-          <div className="stat-num"><CountUp value={data.totalCustomers} /></div>
-          <div className="stat-label">Total Customers</div>
-        </div>
-      </div>
-
-      {/* Terminal Subscription / Inventory Shortcuts */}
-      <DashCardGrid items={[
-        {
-          title: 'Terminal Subscription',
-          description: sub
-            ? `${sub.plan.replace(/_/g, ' ')} plan • ${sub.daysRemaining > 0 ? `${sub.daysRemaining} days left` : 'Expired'} • Ends ${new Date(sub.endDate).toLocaleDateString()}`
-            : 'No active subscription — contact KEE Super Admin',
-          icon: ShieldCheck,
-          onClick: () => toggleDetail('subscription'),
-        },
-        { title: 'Inventory', description: 'Browse and manage inventory products', icon: Boxes, onClick: () => setActiveTab('promotions') },
-      ]} />
-
-      {/* Expandable Details Box */}
-      {activeDetail && (
-        <div className="card animate-fade-in" style={{ marginBottom: 28, borderColor: 'rgba(240,185,11,0.3)' }}>
-          <div className="section-title">
-            <h2 style={{ fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Info style={{ width: 16, height: 16, color: 'var(--gold)' }} />
-              Workspace Info: {activeDetail}
-            </h2>
-            <button onClick={() => setActiveDetail(null)} className="icon-btn"><X /></button>
-          </div>
-
-          {activeDetail === 'today' && (
-            <p style={{ fontSize: 13.5, color: 'var(--text-2)', fontWeight: 600 }}>
-              Compliance entries submitted today: <b style={{ color: 'var(--text-0)' }}>{data.todayCustomers} records</b>.
-            </p>
-          )}
-          {activeDetail === 'total' && (
-            <p style={{ fontSize: 13.5, color: 'var(--text-2)', fontWeight: 600 }}>
-              Lifetime duplicate key compliance logs recorded at this terminal: <b style={{ color: 'var(--text-0)' }}>{data.totalCustomers} entries</b>.
-            </p>
-          )}
-          {activeDetail === 'subscription' && (
-            <p style={{ fontSize: 13.5, color: 'var(--text-2)', fontWeight: 600 }}>
-              {sub
-                ? <>Plan <b style={{ color: 'var(--text-0)' }}>{sub.plan}</b> — expires on <b style={{ color: 'var(--text-0)' }}>{new Date(sub.endDate).toLocaleDateString()}</b> ({sub.daysRemaining} days remaining).</>
-                : 'No active subscription. Please coordinate renewal with KEE Super Admin.'}
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="grid-2">
-        <div className="card">
-          <div className="section-title">
-            <h2>Recent Compliance Registrations</h2>
-            <button onClick={() => setActiveTab('history')} className="btn btn-ghost btn-sm">View All</button>
-          </div>
-          {data.recentCustomers.length === 0 ? (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13, fontWeight: 600 }}>
-              No customers logged yet. Click "New Customer" above to start.
-            </div>
-          ) : (
-            <div>
-              {data.recentCustomers.map(c => (
-                <div key={c.id} className="cust-item">
-                  <div className="cust-avatar">{c.name?.charAt(0)?.toUpperCase() || '?'}</div>
-                  <div className="cust-info">
-                    <div className="name">{c.name}</div>
-                    <div className="meta">{c.phone} • Key: {c.keyNumber}</div>
-                  </div>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-3)', fontWeight: 700, fontSize: 11.5 }}>
-                    <Clock style={{ width: 12, height: 12 }} />
-                    {new Date(c.createdAt).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card chart-card">
-          <div className="section-title">
-            <h2>Registration Trend</h2>
-            <div className="chart-legend">
-              <div className="legend-item"><span className="legend-dot" style={{ background: 'var(--gold)' }}></span> Last 6 months</div>
-            </div>
-          </div>
-          {!data.monthlyStats || data.monthlyStats.length === 0 ? (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13, fontWeight: 600 }}>
-              No registration history logged yet.
-            </div>
-          ) : (
-            <div>
-              <div style={{ height: 160, width: '100%', position: 'relative' }}>
-                {/* SVG Line Graph */}
-                <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
-                  {/* Grid Lines */}
-                  <line x1="0" y1="40" x2="500" y2="40" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  <line x1="0" y1="80" x2="500" y2="80" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  <line x1="0" y1="120" x2="500" y2="120" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  <line x1="0" y1="150" x2="500" y2="150" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-
-                  {/* Draw Line and Dots */}
-                  {(() => {
-                    const stats = data.monthlyStats;
-                    const maxCount = Math.max(...stats.map(s => s.count), 5);
-                    const points = stats.map((s, idx) => {
-                      const x = (idx / (stats.length - 1)) * 500;
-                      // Height scaling from 10 to 140 (160 is total height, keeping 10 margin top/bottom)
-                      const y = 150 - (s.count / maxCount) * 110;
-                      return { x, y, count: s.count };
-                    });
-
-                    const pathD = points.reduce((acc, p, idx) => {
-                      return acc + (idx === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`);
-                    }, '');
-
-                    const areaD = points.reduce((acc, p, idx) => {
-                      return acc + (idx === 0 ? `M ${p.x} ${p.y}` : ` L ${p.x} ${p.y}`);
-                    }, '') + ` L 500 150 L 0 150 Z`;
-
-                    return (
-                      <>
-                        {/* Area under line */}
-                        <path d={areaD} fill="url(#lineGradient)" className="chart-area-fade" />
-
-                        {/* Line path */}
-                        <path d={pathD} fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />
-
-                        {/* Data Points */}
-                        {points.map((p, idx) => (
-                          <g key={idx} className="group cursor-pointer">
-                            <circle cx={p.x} cy={p.y} r="4" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" className="chart-dot-pop transition hover:r-6" style={{ animationDelay: `${0.6 + idx * 0.08}s` }} />
-                            <text x={p.x} y={p.y - 10} textAnchor="middle" fill="#7c3aed" fontSize="9" fontWeight="bold" className="opacity-0 group-hover:opacity-100 transition duration-200">
-                              {p.count}
-                            </text>
-                          </g>
-                        ))}
-
-                        <defs>
-                          <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.6" />
-                            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                      </>
-                    );
-                  })()}
-                </svg>
-              </div>
-
-              {/* Month Labels */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.05em', padding: '10px 4px 0' }}>
-                {data.monthlyStats.map(s => (
-                  <span key={s.month}>{s.month.split(' ')[0]}</span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Active Announcement Popup Modal */}
       {activePopupAd && createPortal(
@@ -3479,7 +3154,7 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
               </span>
               <h3 style={{ fontSize: 17 }}>{activePopupAd.title}</h3>
               <p style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600, lineHeight: 1.5 }}>
-                Special promotion from KEE Headquarters for duplicate key shop workspaces. Upgrade inventory stock or log compliance checks to qualify.
+                Special promotion from Key Shop Headquarters for duplicate key shop workspaces. Upgrade inventory stock or log compliance checks to qualify.
               </p>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', gap: 10 }}>
@@ -3735,7 +3410,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
       'Verifying account balance & credit lines...',
       'Authorizing subscription escrow settlement transaction...',
       'Encrypting card details via AES-GCM...',
-      'Fulfilling KEE API workspace provisioning...'
+      'Fulfilling Key Shop API workspace provisioning...'
     ];
 
     for (let i = 0; i < logs.length; i++) {
@@ -3867,7 +3542,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
         <div>
           <div className="eyebrow"><Layers /> Platform Operations</div>
           <h1>{t('shops')}</h1>
-          <p>Provision, monitor and manage every key shop workspace on the Kee platform.</p>
+          <p>Provision, monitor and manage every key shop workspace on the Key Shop platform.</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -4691,7 +4366,7 @@ function SuperCustomersView({ t, api, searchDispatch }) {
         <div>
           <div className="eyebrow"><ShieldCheck /> Cross-Tenant Compliance</div>
           <h1>Customer Registry</h1>
-          <p>Supervise and edit duplicate-key compliance records across every shop workspace on Kee.</p>
+          <p>Supervise and edit duplicate-key compliance records across every shop workspace on Key Shop.</p>
         </div>
         <button onClick={openCreateWizard} className="btn btn-primary">
           <Plus />
@@ -6788,7 +6463,7 @@ function KeysSearchView({ api, searchDispatch }) {
                       </div>
                       <div>
                         <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Registered Shop</span>
-                        <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.shop?.name || 'KEE Workspace Shop'}</span>
+                        <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.shop?.name || 'Key Shop Workspace'}</span>
                       </div>
                       <div>
                         <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Shop Mobile</span>
@@ -8160,7 +7835,7 @@ export function CustomerCareView({ t, api }) {
         <div>
           <div className="eyebrow"><Phone /> Customer Care</div>
           <h1>Support & Training Center</h1>
-          <p>Reach KEE technical support and level up with locksmith training resources.</p>
+          <p>Reach Key Shop technical support and level up with locksmith training resources.</p>
         </div>
       </div>
 
@@ -8191,7 +7866,7 @@ export function CustomerCareView({ t, api }) {
               </div>
             </div>
             <a
-              href={`https://wa.me/${cleanPhone || '919876543210'}?text=Hi%20KEE%20Support%2C%20I%20have%20a%20question%20regarding%20my%20duplicate%20key%20shop%20platform.`}
+              href={`https://wa.me/${cleanPhone || '919876543210'}?text=Hi%20Key%20Shop%20Support%2C%20I%20have%20a%20question%20regarding%20my%20duplicate%20key%20shop%20platform.`}
               target="_blank"
               rel="noreferrer"
               className="btn btn-sm"
@@ -9158,7 +8833,7 @@ export function ReportsPortalView({ t, api }) {
     }
     const headers = Object.keys(reportData[0]);
     let txtContent = `========================================================================\n`;
-    txtContent += `KEE SYSTEM TERMINAL - CUSTOMER REGISTRATION REPORT\n`;
+    txtContent += `KEY SHOP SYSTEM TERMINAL - CUSTOMER REGISTRATION REPORT\n`;
     txtContent += `Generated: ${new Date().toLocaleString()}\n`;
     txtContent += `Range: ${fromDate || 'All Time'} to ${toDate || 'All Time'}\n`;
     txtContent += `========================================================================\n\n`;
