@@ -651,7 +651,7 @@ select.sel:focus { border-color: var(--gold); }
 
 .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 @media (max-width: 900px) { .product-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .product-grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
 
 .product-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform .2s ease, border-color .2s ease; }
 .product-card:hover { transform: translateY(-3px); border-color: rgba(79, 70, 229, 0.3); }

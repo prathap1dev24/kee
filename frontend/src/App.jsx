@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from './context/AuthContext';
-import { getAssetUrl, downloadAsset, filenameForAsset } from './apiConfig';
+import { getAssetUrl, downloadAsset, filenameForAsset, API_BASE } from './apiConfig';
 import PublicSite from './components/PublicSite';
 import {
   Key, Users, Shield, Radio, BarChart3, Database, LogOut, Check, X,
@@ -506,9 +506,32 @@ const IS_NATIVE_APP = Capacitor.isNativePlatform();
 //   3. If the user denies permission, reject with kind: 'permission'.
 //   4. If permission is granted but device location services (GPS) are
 //      switched off, reject with kind: 'disabled'.
-//   5. Otherwise resolve the device's actual current GPS coordinates
-//      (maximumAge: 0 forces a fresh fix rather than a cached one, so the
-//      captured location is accurate as of the button press).
+//   5. Otherwise resolve the device's actual current GPS coordinates.
+//
+// A single getCurrentPosition() call (even with enableHighAccuracy) often
+// returns a coarse, network/cell-tower-based fix instead of a real GPS lock
+// - especially right after the app opens, before the GPS chip has warmed
+// up, which is what made "current location" land hundreds of meters off.
+// So instead we sample multiple updates via watchPosition() for up to ~9s
+// and keep whichever reading has the smallest accuracy radius, resolving
+// early the moment a good-enough fix (<=20m accuracy) comes in.
+function classifyLocationError(e) {
+  const msg = ((e && e.message) || '').toLowerCase();
+  if ((e && e.code === 1) || msg.includes('permission') || msg.includes('denied')) {
+    const err = new Error('Location permission is required to capture your current location.');
+    err.kind = 'permission';
+    return err;
+  }
+  if (msg.includes('not enabled') || msg.includes('disabled') || msg.includes('location services') || msg.includes('turned off')) {
+    const err = new Error('Please enable Location Services to capture your current location.');
+    err.kind = 'disabled';
+    return err;
+  }
+  const err = new Error('Unable to fetch current location. Please allow location access or enter the address manually.');
+  err.kind = 'unavailable';
+  return err;
+}
+
 async function resolveCurrentLocation() {
   const { Geolocation } = await import('@capacitor/geolocation');
 
@@ -535,24 +558,63 @@ async function resolveCurrentLocation() {
     }
   }
 
+  return new Promise((resolve, reject) => {
+    let best = null;
+    let watchId = null;
+    let settled = false;
+    let fallbackError = null;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (watchId != null) {
+        Geolocation.clearWatch({ id: watchId }).catch(() => {});
+      }
+      if (best) {
+        resolve({ lat: best.coords.latitude, lng: best.coords.longitude, accuracy: best.coords.accuracy });
+      } else {
+        reject(fallbackError || classifyLocationError(new Error('unavailable')));
+      }
+    };
+
+    const timer = setTimeout(finish, 9000);
+
+    Geolocation.watchPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }, (pos, err) => {
+      if (err) {
+        fallbackError = classifyLocationError(err);
+        return;
+      }
+      if (pos && (!best || pos.coords.accuracy < best.coords.accuracy)) {
+        best = pos;
+      }
+      if (pos && pos.coords.accuracy <= 20) {
+        finish();
+      }
+    }).then((id) => {
+      watchId = id;
+    }).catch((e) => {
+      fallbackError = classifyLocationError(e);
+      finish();
+    });
+  });
+}
+
+// Reverse-geocodes GPS coordinates into a structured, street-level address
+// via our own backend (see backend/src/geo/geo.controller.ts) rather than
+// calling a third-party geocoder directly from the client. Nominatim
+// (OpenStreetMap), which is what actually returns house number / road
+// detail, doesn't send CORS headers for direct browser/WebView requests -
+// routing through our backend sidesteps that. Returns null on any failure
+// so callers can fall back to raw coordinates.
+async function reverseGeocode(lat, lng) {
   try {
-    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    const res = await fetch(`${API_BASE}/api/geo/reverse-geocode?lat=${lat}&lng=${lng}`);
+    if (!res.ok) return null;
+    return await res.json();
   } catch (e) {
-    const msg = ((e && e.message) || '').toLowerCase();
-    if ((e && e.code === 1) || msg.includes('permission') || msg.includes('denied')) {
-      const err = new Error('Location permission is required to capture your current location.');
-      err.kind = 'permission';
-      throw err;
-    }
-    if (msg.includes('not enabled') || msg.includes('disabled') || msg.includes('location services') || msg.includes('turned off')) {
-      const err = new Error('Please enable Location Services to capture your current location.');
-      err.kind = 'disabled';
-      throw err;
-    }
-    const err = new Error('Unable to fetch current location. Please allow location access or enter the address manually.');
-    err.kind = 'unavailable';
-    throw err;
+    console.warn('Reverse geocoding failed:', e);
+    return null;
   }
 }
 
@@ -1135,19 +1197,14 @@ export default function App() {
       setRegLocLoading(false);
       return;
     }
-    try {
-      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-      if (res.ok) {
-        const data = await res.json();
-        const parts = [data.locality, data.city, data.principalSubdivision].filter(Boolean);
-        if (parts.length > 0) {
-          setRegLocation(parts.join(', '));
-          setRegLocLoading(false);
-          return;
-        }
+    const data = await reverseGeocode(lat, lng);
+    if (data) {
+      const parts = [data.street, data.locality, data.city, data.state].filter(Boolean);
+      if (parts.length > 0) {
+        setRegLocation(parts.join(', '));
+        setRegLocLoading(false);
+        return;
       }
-    } catch (e) {
-      console.warn('Reverse geocoding failed:', e);
     }
     setRegLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     setRegLocLoading(false);
@@ -4618,15 +4675,21 @@ function SuperCustomersView({ t, api, searchDispatch }) {
             <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 14, marginBottom: 18 }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <MapPin style={{ width: 18, height: 18, color: 'var(--green)', flexShrink: 0 }} />
+                  <MapPin style={{ width: 18, height: 18, color: viewCust.latitude ? 'var(--green)' : 'var(--text-3)', flexShrink: 0 }} />
                   <div>
                     <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
-                    <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {viewCust.latitude} &bull; Long: {viewCust.longitude}</p>
+                    {viewCust.latitude && viewCust.longitude ? (
+                      <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {viewCust.latitude} &bull; Long: {viewCust.longitude}</p>
+                    ) : (
+                      <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
+                    )}
                   </div>
                 </div>
-                <a href={viewCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
-                  <span>Google Maps</span><ExternalLink className="h-3 w-3" />
-                </a>
+                {viewCust.mapsLink && (
+                  <a href={viewCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
+                    <span>Google Maps</span><ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
               {viewCust.capturedAddress && (
                 <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 26, fontWeight: 600 }}>
@@ -4872,28 +4935,49 @@ function KeysCatalogView({ api, searchDispatch }) {
             )}
 
             {editKey && (
-              <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 12, padding: 14, marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div className="flex items-center justify-between">
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Key Number / Key Code</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-0)' }}>{editKey.keyNumber}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em' }}>Connected Shop</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-0)' }}>{editKey.shop ? editKey.shop.name : 'Global Catalogue (not shop-scoped)'}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', display: 'block', marginBottom: 6 }}>
-                    Connected Customer{editKey.customers && editKey.customers.length !== 1 ? 's' : ''}
-                  </span>
-                  {editKey.customers && editKey.customers.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {editKey.customers.map(c => (
-                        <span key={c.id} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-0)' }}>{c.name} &bull; {c.phone}</span>
-                      ))}
+              <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 14, padding: '16px 18px', marginBottom: 20 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Hash style={{ width: 15, height: 15, color: 'var(--gold)' }} />
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Key Number / Code</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)', wordBreak: 'break-word' }}>{editKey.keyNumber}</div>
                     </div>
-                  ) : (
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-3)', fontStyle: 'italic' }}>No customer linked yet</span>
-                  )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Store style={{ width: 15, height: 15, color: 'var(--gold)' }} />
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Connected Shop</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)', wordBreak: 'break-word' }}>{editKey.shop ? editKey.shop.name : 'Global Catalogue'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: 14, paddingTop: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User style={{ width: 15, height: 15, color: 'var(--gold)' }} />
+                  </span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
+                      Connected Customer{editKey.customers && editKey.customers.length !== 1 ? 's' : ''}
+                    </div>
+                    {editKey.customers && editKey.customers.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {editKey.customers.map(c => (
+                          <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)' }}>{c.name}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)' }}>{c.phone}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', fontStyle: 'italic' }}>No customer linked yet</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -6487,15 +6571,21 @@ function KeysSearchView({ api, searchDispatch }) {
                     <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 14, borderRadius: 14, marginTop: 12 }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <MapPin style={{ width: 18, height: 18, color: 'var(--green)', flexShrink: 0 }} />
+                          <MapPin style={{ width: 18, height: 18, color: selectedResult.customer.latitude ? 'var(--green)' : 'var(--text-3)', flexShrink: 0 }} />
                           <div>
                             <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
-                            <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {selectedResult.customer.latitude} &bull; Long: {selectedResult.customer.longitude}</p>
+                            {selectedResult.customer.latitude && selectedResult.customer.longitude ? (
+                              <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {selectedResult.customer.latitude} &bull; Long: {selectedResult.customer.longitude}</p>
+                            ) : (
+                              <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
+                            )}
                           </div>
                         </div>
-                        <a href={selectedResult.customer.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
-                          <span>Google Maps</span><ExternalLink className="h-3 w-3" />
-                        </a>
+                        {selectedResult.customer.mapsLink && (
+                          <a href={selectedResult.customer.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
+                            <span>Google Maps</span><ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
                       </div>
                       {selectedResult.customer.capturedAddress && (
                         <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 26, fontWeight: 600 }}>
@@ -6695,27 +6785,28 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
     setLatitude(lat);
     setLongitude(lng);
     setGpsTimestamp(new Date().toISOString());
-    try {
-      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.locality || data.city) {
-          setAddressLine(data.locality || data.city);
-        }
-        const matchedState = Object.keys(INDIAN_STATES_DISTRICTS).find(
-          st => st.toLowerCase() === (data.principalSubdivision || '').toLowerCase()
-        );
-        if (matchedState) {
-          setStateVal(matchedState);
-          const list = INDIAN_STATES_DISTRICTS[matchedState] || [];
-          const matchedDistrict = list.find(dt => dt.toLowerCase() === (data.city || data.locality || '').toLowerCase());
-          setDistrict(matchedDistrict || list[0] || district);
-        }
-        const parts = [data.locality, data.city, data.principalSubdivision, data.countryName].filter(Boolean);
-        if (parts.length > 0) setCapturedAddress(parts.join(', '));
+    const data = await reverseGeocode(lat, lng);
+    if (data) {
+      // Prefer the actual street (house number + road) for the editable
+      // address line - this is the street-level detail that was missing
+      // when this only pulled locality/city. Falls back to locality/city
+      // for points without a mapped street (rural areas).
+      const streetLine = data.street || data.locality || data.city;
+      if (streetLine) setAddressLine(streetLine);
+
+      const matchedState = Object.keys(INDIAN_STATES_DISTRICTS).find(
+        st => st.toLowerCase() === (data.state || '').toLowerCase()
+      );
+      if (matchedState) {
+        setStateVal(matchedState);
+        const list = INDIAN_STATES_DISTRICTS[matchedState] || [];
+        const matchedDistrict = list.find(dt => dt.toLowerCase() === (data.district || data.city || '').toLowerCase());
+        setDistrict(matchedDistrict || list[0] || district);
       }
-    } catch (e) {
-      console.warn('Reverse geocoding failed:', e);
+      // Nominatim's display_name is already a fully formatted address
+      // (street, locality, city, state, postcode, country in order) - use it
+      // directly for the read-only captured-address summary.
+      if (data.displayName) setCapturedAddress(data.displayName);
     }
     setIsCapturingGps(false);
   };
@@ -6870,8 +6961,15 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
 
   const handleFinalSubmit = async () => {
     try {
-      const finalLat = latitude || 28.6139;
-      const finalLng = longitude || 77.2090;
+      // Only send real, device-captured coordinates. This used to fall back
+      // to a hardcoded New Delhi city-center point (28.6139, 77.2090) and a
+      // fake "Connaught Place, New Delhi, India" address whenever GPS
+      // capture was skipped/failed - silently fabricating a location for
+      // customers who could be anywhere in the country. Sending null instead
+      // (both fields are optional in the backend DTO) means an uncaptured
+      // location honestly shows as not-captured rather than lying about it.
+      const finalLat = latitude || null;
+      const finalLng = longitude || null;
 
       // If the typed key number matches an existing catalog entry, reference it
       // directly. Otherwise, send the "register this as a new key blank" details
@@ -6897,8 +6995,8 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
         keyNumber, vehicleNumber, masterKeyId: finalMasterKeyId, manualKey,
         latitude: finalLat,
         longitude: finalLng,
-        mapsLink: `https://www.google.com/maps?q=${finalLat},${finalLng}`,
-        capturedAddress: capturedAddress || 'Connaught Place, New Delhi, India',
+        mapsLink: (finalLat && finalLng) ? `https://www.google.com/maps?q=${finalLat},${finalLng}` : null,
+        capturedAddress: capturedAddress || address || null,
         photoBase64
       };
 
@@ -7647,15 +7745,21 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
                 <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 14, marginBottom: 18 }}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <MapPin style={{ width: 18, height: 18, color: 'var(--green)', flexShrink: 0 }} />
+                      <MapPin style={{ width: 18, height: 18, color: selectedCust.latitude ? 'var(--green)' : 'var(--text-3)', flexShrink: 0 }} />
                       <div>
                         <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
-                        <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {selectedCust.latitude} &bull; Long: {selectedCust.longitude}</p>
+                        {selectedCust.latitude && selectedCust.longitude ? (
+                          <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {selectedCust.latitude} &bull; Long: {selectedCust.longitude}</p>
+                        ) : (
+                          <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
+                        )}
                       </div>
                     </div>
-                    <a href={selectedCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
-                      <span>Google Maps</span><ExternalLink className="h-3 w-3" />
-                    </a>
+                    {selectedCust.mapsLink && (
+                      <a href={selectedCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
+                        <span>Google Maps</span><ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                   {selectedCust.capturedAddress && (
                     <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 26, fontWeight: 600 }}>

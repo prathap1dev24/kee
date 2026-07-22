@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
+import { GeoController } from './geo/geo.controller';
 import { TenantModule } from './tenant/tenant.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AuthModule } from './auth/auth.module';
@@ -26,7 +27,7 @@ import { TenantInterceptor } from './tenant/tenant.interceptor';
     NotificationModule,
     PromotionModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, GeoController],
   providers: [
     {
       provide: APP_INTERCEPTOR,
