@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CustomerService } from './customer.service';
 import { UpdateCustomerDto, CreateSuperCustomerDto } from './dto/customer.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -26,5 +27,33 @@ export class SuperCustomerController {
   @Put(':id')
   async updateCustomer(@Param('id') id: string, @Body() dto: UpdateCustomerDto) {
     return this.customerService.updateSuperCustomer(id, dto);
+  }
+
+  // Mirrors CustomerController#uploadDoc (shop/customers/:id/docs) so the
+  // unified Customer Registration wizard can upload documents right after
+  // creating a customer on a shop's behalf.
+  @Post(':id/docs')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDoc(
+    @Param('id') id: string,
+    @Body('documentType') documentType: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Verification file document is required');
+    }
+    if (!documentType) {
+      throw new BadRequestException('documentType text is required');
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File size exceeds the 5MB limit');
+    }
+
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Only JPEG, PNG, and PDF formats are accepted');
+    }
+
+    return this.customerService.addCustomerDocumentSuper(id, documentType, file);
   }
 }

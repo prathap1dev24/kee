@@ -57,6 +57,7 @@ describe('ShopService', () => {
           fileUrl: '/api/uploads/new.png',
           fileKey: 'new.png',
           fileSize: 4,
+          originalName: 'photo.png',
         },
       });
       expect(result).toEqual({ id: 'doc-2', documentType: 'SHOP_PHOTO' });

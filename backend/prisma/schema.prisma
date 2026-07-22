@@ -25,11 +25,6 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
-enum KeyStatus {
-  ACTIVE
-  INACTIVE
-}
-
 enum AdType {
   POPUP
   BANNER
@@ -108,16 +103,10 @@ model Subscription {
 }
 
 model MasterKey {
-  id            String    @id @default(uuid())
-  keyNumber     String
-  brand         String
-  category      String
-  blankNumber   String
-  frontImageUrl String?
-  backImageUrl  String?
-  description   String?
-  notes         String?
-  status        KeyStatus @default(ACTIVE)
+  id           String  @id @default(uuid())
+  keyNumber    String
+  category     String
+  backImageUrl String?
 
   // Null shopId = legacy/global catalog entry. Shop admins create keys scoped
   // to their own shop during customer registration; super admin sees all.
@@ -176,6 +165,7 @@ model CustomerDocument {
   fileUrl      String // Local/object-storage path
   fileKey      String // Unique file key
   fileSize     Int // bytes
+  originalName String? // Original client-side filename (for download), when known
 
   deletedAt DateTime?
 
@@ -199,6 +189,7 @@ model ShopDocument {
   fileUrl      String // Local/object-storage path
   fileKey      String // Unique file key
   fileSize     Int    @default(0) // bytes
+  originalName String? // Original client-side filename (for download), when known
 
   deletedAt DateTime?
 

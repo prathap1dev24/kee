@@ -51,10 +51,7 @@ export class CustomerService {
           create: {
             shopId,
             keyNumber: dto.keyNumber,
-            brand: dto.manualKey.brand,
             category: dto.manualKey.category,
-            blankNumber: dto.manualKey.blankNumber,
-            status: 'ACTIVE',
           },
         });
         finalMasterKeyId = key.id;
@@ -183,6 +180,7 @@ export class CustomerService {
         fileUrl: upload.fileUrl,
         fileKey: upload.fileKey,
         fileSize: file.size,
+        originalName: file.originalname || null,
       },
     });
 
@@ -197,6 +195,19 @@ export class CustomerService {
     });
 
     return doc;
+  }
+
+  // SUPER ADMIN: Add Document to any customer (cross-shop). The customer's own
+  // shopId is used for file storage keying and activity log scoping so this
+  // stays consistent with a Shop Admin uploading the same document themselves.
+  async addCustomerDocumentSuper(customerId: string, documentType: string, file: any) {
+    const customer = await this.tenantService.prisma.customer.findFirst({
+      where: { id: customerId },
+    });
+    if (!customer) {
+      throw new NotFoundException('Customer record not found');
+    }
+    return this.addCustomerDocument(customer.shopId, customerId, documentType, file);
   }
 
   // SHOP ADMIN: Remove Document from Customer

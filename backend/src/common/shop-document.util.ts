@@ -47,11 +47,8 @@ export async function persistShopDocuments(
     const parsed = parseBase64DataUri(value);
     if (!parsed) continue; // not provided, or not a valid base64 data URI
 
-    const upload = await fileService.uploadFile(
-      `${documentType.toLowerCase()}${parsed.ext}`,
-      parsed.buffer,
-      shopId,
-    );
+    const originalName = `${documentType.toLowerCase()}${parsed.ext}`;
+    const upload = await fileService.uploadFile(originalName, parsed.buffer, shopId);
 
     await tx.shopDocument.create({
       data: {
@@ -60,6 +57,7 @@ export async function persistShopDocuments(
         fileUrl: upload.fileUrl,
         fileKey: upload.fileKey,
         fileSize: parsed.buffer.length,
+        originalName,
       },
     });
   }

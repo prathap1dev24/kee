@@ -1,5 +1,12 @@
 {
   "appId": "com.kee.app",
   "appName": "Kee",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "allowNavigation": [
+      "kee-dopg.onrender.com",
+      "*.onrender.com",
+      "storage.googleapis.com"
+    ]
+  }
 }

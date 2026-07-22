@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import { useAuth } from './context/AuthContext';
-import { getAssetUrl, downloadAsset } from './apiConfig';
+import { getAssetUrl, downloadAsset, filenameForAsset } from './apiConfig';
 import PublicSite from './components/PublicSite';
 import {
   Key, Users, Shield, Radio, BarChart3, Database, LogOut, Check, X,
@@ -495,6 +495,80 @@ const GLOBAL_SEARCH_RESULT_META = {
 // marketing site before sign-in.
 const IS_NATIVE_APP = Capacitor.isNativePlatform();
 
+// Shared "Current Location" resolver used by both the Shop Registration wizard
+// (captureShopLocation) and the Customer Registration wizard
+// (captureCustomerLocation). Centralizing this means both flows enforce the
+// exact same permission/GPS-availability checks:
+//   1. Check whether location permission is already granted.
+//   2. If not, prompt the OS permission dialog (native only - on web the
+//      browser's own permission prompt fires automatically the first time
+//      getCurrentPosition() is called, so there's nothing to request upfront).
+//   3. If the user denies permission, reject with kind: 'permission'.
+//   4. If permission is granted but device location services (GPS) are
+//      switched off, reject with kind: 'disabled'.
+//   5. Otherwise resolve the device's actual current GPS coordinates
+//      (maximumAge: 0 forces a fresh fix rather than a cached one, so the
+//      captured location is accurate as of the button press).
+async function resolveCurrentLocation() {
+  const { Geolocation } = await import('@capacitor/geolocation');
+
+  if (IS_NATIVE_APP) {
+    let status;
+    try {
+      status = await Geolocation.checkPermissions();
+    } catch (e) {
+      status = { location: 'prompt', coarseLocation: 'prompt' };
+    }
+    if (status.location !== 'granted' && status.coarseLocation !== 'granted') {
+      try {
+        status = await Geolocation.requestPermissions();
+      } catch (e) {
+        const err = new Error('Location permission is required to capture your current location.');
+        err.kind = 'permission';
+        throw err;
+      }
+    }
+    if (status.location !== 'granted' && status.coarseLocation !== 'granted') {
+      const err = new Error('Location permission is required to capture your current location.');
+      err.kind = 'permission';
+      throw err;
+    }
+  }
+
+  try {
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  } catch (e) {
+    const msg = ((e && e.message) || '').toLowerCase();
+    if ((e && e.code === 1) || msg.includes('permission') || msg.includes('denied')) {
+      const err = new Error('Location permission is required to capture your current location.');
+      err.kind = 'permission';
+      throw err;
+    }
+    if (msg.includes('not enabled') || msg.includes('disabled') || msg.includes('location services') || msg.includes('turned off')) {
+      const err = new Error('Please enable Location Services to capture your current location.');
+      err.kind = 'disabled';
+      throw err;
+    }
+    const err = new Error('Unable to fetch current location. Please allow location access or enter the address manually.');
+    err.kind = 'unavailable';
+    throw err;
+  }
+}
+
+// Opens the device's native location-settings screen (Android/iOS only - a
+// no-op on web, where there's no equivalent OS settings screen to deep-link
+// to). Used by the "Enable Location Services" prompt shown when GPS is off.
+async function openDeviceLocationSettings() {
+  if (!IS_NATIVE_APP) return;
+  try {
+    const { NativeSettings, AndroidSettings, IOSSettings } = await import('capacitor-native-settings');
+    await NativeSettings.open({ optionAndroid: AndroidSettings.Location, optionIOS: IOSSettings.LocationServices });
+  } catch (e) {
+    console.warn('Could not open device location settings:', e);
+  }
+}
+
 export default function App() {
   const { user, isAuthenticated, loading, login, logout, api } = useAuth();
   const [lang, setLang] = useState(localStorage.getItem('kee_lang') || 'en');
@@ -570,14 +644,14 @@ export default function App() {
           .catch(() => [])
       );
 
-      // Master keys - server-side filtered by keyNumber/brand/category.
+      // Master keys - server-side filtered by keyNumber/category.
       tasks.push(
         api.getMasterKeys(query)
           .then(list => (list || []).map(k => ({
             type: 'key',
             key: `key-${k.id}`,
             title: k.keyNumber,
-            line2: [k.brand, k.category].filter(Boolean).join(' \u2022 '),
+            line2: k.category || '',
             line3: k.shop?.name || (!isSuper ? (shopDisplayName || '') : ''),
             searchTerm: k.keyNumber,
           })))
@@ -746,6 +820,8 @@ export default function App() {
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [regLocation, setRegLocation] = useState('');
   const [regLocLoading, setRegLocLoading] = useState(false);
+  const [regLocError, setRegLocError] = useState('');
+  const [regLocErrorKind, setRegLocErrorKind] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPlan, setRegPlan] = useState('MONTHLY'); // 'MONTHLY' | 'HALF_YEARLY' | 'YEARLY'
   const [regError, setRegError] = useState('');
@@ -912,37 +988,35 @@ export default function App() {
   // device's real GPS position and reverse-geocodes it into the free-text
   // location field. The field stays a normal editable input afterwards, so
   // the shop owner can correct/refine whatever gets auto-filled here.
-  const captureShopLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported on this device.');
+  const captureShopLocation = async () => {
+    setRegLocError('');
+    setRegLocErrorKind('');
+    setRegLocLoading(true);
+    let lat, lng;
+    try {
+      ({ lat, lng } = await resolveCurrentLocation());
+    } catch (e) {
+      setRegLocError(e.message);
+      setRegLocErrorKind(e.kind || 'unavailable');
+      setRegLocLoading(false);
       return;
     }
-    setRegLocLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        try {
-          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-          if (res.ok) {
-            const data = await res.json();
-            const parts = [data.locality, data.city, data.principalSubdivision].filter(Boolean);
-            if (parts.length > 0) {
-              setRegLocation(parts.join(', '));
-              setRegLocLoading(false);
-              return;
-            }
-          }
-        } catch (e) {
-          console.warn('Reverse geocoding failed:', e);
+    try {
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      if (res.ok) {
+        const data = await res.json();
+        const parts = [data.locality, data.city, data.principalSubdivision].filter(Boolean);
+        if (parts.length > 0) {
+          setRegLocation(parts.join(', '));
+          setRegLocLoading(false);
+          return;
         }
-        setRegLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-        setRegLocLoading(false);
-      },
-      () => {
-        setRegLocLoading(false);
-        alert('Unable to fetch current location. Please allow location access or enter the address manually.');
       }
-    );
+    } catch (e) {
+      console.warn('Reverse geocoding failed:', e);
+    }
+    setRegLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    setRegLocLoading(false);
   };
 
   const handleRegCheckout = async (e) => {
@@ -1509,6 +1583,21 @@ export default function App() {
                         placeholder="City, State / landmark"
                       />
                     </div>
+                    {regLocError && (
+                      <div style={{ marginTop: 6 }}>
+                        <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700 }}>{regLocError}</p>
+                        {regLocErrorKind === 'disabled' && (
+                          <button
+                            type="button"
+                            onClick={openDeviceLocationSettings}
+                            className="cursor-pointer select-none"
+                            style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', marginTop: 2 }}
+                          >
+                            Open Location Settings
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3105,6 +3194,9 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
   const [editShopPhoto, setEditShopPhoto] = useState('');
   const [editShopLicense, setEditShopLicense] = useState('');
   const [editOwnerAadhaar, setEditOwnerAadhaar] = useState('');
+  const [editShopPhotoName, setEditShopPhotoName] = useState('');
+  const [editShopLicenseName, setEditShopLicenseName] = useState('');
+  const [editOwnerAadhaarName, setEditOwnerAadhaarName] = useState('');
 
   // Form States for Subscription management
   const [newPlan, setNewPlan] = useState('MONTHLY');
@@ -3353,13 +3445,16 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
     // Verification documents are read-only in this modal (review/download
     // only - no re-upload here) and now come from the relational
     // ShopDocument table (shop.documents), not companyDetails JSON.
-    const findDocUrl = (documentType) => {
-      const doc = (shop.documents || []).find((d) => d.documentType === documentType);
-      return doc ? doc.fileUrl : '';
-    };
-    setEditShopPhoto(findDocUrl('SHOP_PHOTO'));
-    setEditShopLicense(findDocUrl('SHOP_LICENSE'));
-    setEditOwnerAadhaar(findDocUrl('OWNER_AADHAAR'));
+    const findDoc = (documentType) => (shop.documents || []).find((d) => d.documentType === documentType);
+    const shopPhotoDoc = findDoc('SHOP_PHOTO');
+    const shopLicenseDoc = findDoc('SHOP_LICENSE');
+    const ownerAadhaarDoc = findDoc('OWNER_AADHAAR');
+    setEditShopPhoto(shopPhotoDoc ? shopPhotoDoc.fileUrl : '');
+    setEditShopLicense(shopLicenseDoc ? shopLicenseDoc.fileUrl : '');
+    setEditOwnerAadhaar(ownerAadhaarDoc ? ownerAadhaarDoc.fileUrl : '');
+    setEditShopPhotoName(shopPhotoDoc ? shopPhotoDoc.originalName : '');
+    setEditShopLicenseName(shopLicenseDoc ? shopLicenseDoc.originalName : '');
+    setEditOwnerAadhaarName(ownerAadhaarDoc ? ownerAadhaarDoc.originalName : '');
 
     setShowEditModal(true);
   };
@@ -3812,7 +3907,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     {editShopPhoto && (
                       <button
                         type="button"
-                        onClick={() => downloadAsset(editShopPhoto, 'shop_photo.png')}
+                        onClick={() => downloadAsset(editShopPhoto, editShopPhotoName || filenameForAsset(editShopPhoto, 'shop_photo'))}
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
                       >
@@ -3840,7 +3935,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     {editShopLicense && (
                       <button
                         type="button"
-                        onClick={() => downloadAsset(editShopLicense, 'shop_license.pdf')}
+                        onClick={() => downloadAsset(editShopLicense, editShopLicenseName || filenameForAsset(editShopLicense, 'shop_license'))}
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
                       >
@@ -3868,7 +3963,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     {editOwnerAadhaar && (
                       <button
                         type="button"
-                        onClick={() => downloadAsset(editOwnerAadhaar, 'owner_aadhaar.pdf')}
+                        onClick={() => downloadAsset(editOwnerAadhaar, editOwnerAadhaarName || filenameForAsset(editOwnerAadhaar, 'owner_aadhaar'))}
                         className="btn btn-primary btn-sm btn-block"
                         style={{ fontSize: 9, padding: '6px 10px' }}
                       >
@@ -4165,7 +4260,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
 // ============================================================================
 // COMPONENT 3: SUPER CUSTOMER SUPERVISION VIEW (SUPER ADMIN ONLY)
 // ============================================================================
-function SuperCustomersView({ api, searchDispatch }) {
+function SuperCustomersView({ t, api, searchDispatch }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -4177,32 +4272,13 @@ function SuperCustomersView({ api, searchDispatch }) {
       setSearch(searchDispatch.query);
     }
   }, [searchDispatch?.nonce]);
-  const [selectedCust, setSelectedCust] = useState(null);
   const [viewCust, setViewCust] = useState(null);
-  const [showEditDrawer, setShowEditDrawer] = useState(false);
 
-  // Edit Customer states
-  const [editName, setEditName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editAddress, setEditAddress] = useState('');
-  const [editProofType, setEditProofType] = useState('');
-  const [editProofNo, setEditProofNo] = useState('');
-  const [editReason, setEditReason] = useState('');
-  const [editKeyNo, setEditKeyNo] = useState('');
-
-  // Create Customer (Super Admin) states
+  // Create Customer (Super Admin) - uses the same multi-step
+  // CustomerRegistrationWizard as Shop Admin, rendered full-screen with a
+  // required Shop dropdown on Step 1 (see superAdminMode prop).
   const [shops, setShops] = useState([]);
-  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
-  const [createShopId, setCreateShopId] = useState('');
-  const [createName, setCreateName] = useState('');
-  const [createPhone, setCreatePhone] = useState('');
-  const [createAddress, setCreateAddress] = useState('');
-  const [createProofType, setCreateProofType] = useState('');
-  const [createProofNo, setCreateProofNo] = useState('');
-  const [createReason, setCreateReason] = useState('');
-  const [createKeyNo, setCreateKeyNo] = useState('');
-  const [createSubmitting, setCreateSubmitting] = useState(false);
-  const [createError, setCreateError] = useState('');
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -4220,90 +4296,13 @@ function SuperCustomersView({ api, searchDispatch }) {
     }
   };
 
-  const openCreateDrawer = async () => {
-    setCreateError('');
-    setCreateShopId('');
-    setCreateName('');
-    setCreatePhone('');
-    setCreateAddress('');
-    setCreateProofType('');
-    setCreateProofNo('');
-    setCreateReason('');
-    setCreateKeyNo('');
-    setShowCreateDrawer(true);
+  const openCreateWizard = async () => {
+    setShowCreateWizard(true);
     try {
       const res = await api.getShops();
       setShops(res || []);
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    setCreateError('');
-    if (!createShopId) {
-      setCreateError('Please select a shop before creating the customer.');
-      return;
-    }
-    if (!PHONE_REGEX.test(createPhone)) {
-      setCreateError(PHONE_REGEX_MESSAGE);
-      return;
-    }
-    setCreateSubmitting(true);
-    try {
-      await api.createSuperCustomer({
-        shopId: createShopId,
-        name: createName,
-        phone: createPhone,
-        address: createAddress,
-        idProofType: createProofType,
-        idProofNumber: createProofNo,
-        reason: createReason,
-        keyNumber: createKeyNo,
-      });
-      setShowCreateDrawer(false);
-      fetchCustomers();
-    } catch (err) {
-      setCreateError(err.message || 'Customer creation failed');
-    } finally {
-      setCreateSubmitting(false);
-    }
-  };
-
-  const handleEditClick = (c) => {
-    setSelectedCust(c);
-    setEditName(c.name);
-    setEditPhone(c.phone);
-    setEditAddress(c.address);
-    setEditProofType(c.idProofType);
-    setEditProofNo(c.idProofNumber || '');
-    setEditReason(c.reason);
-    setEditKeyNo(c.keyNumber);
-    setShowEditDrawer(true);
-  };
-
-  const handleUpdateSubmit = async (e) => {
-    e.preventDefault();
-    if (!PHONE_REGEX.test(editPhone)) {
-      alert(PHONE_REGEX_MESSAGE);
-      return;
-    }
-    try {
-      await api.updateSuperCustomer(selectedCust.id, {
-        name: editName,
-        phone: editPhone,
-        address: editAddress,
-        idProofType: editProofType,
-        idProofNumber: editProofNo,
-        reason: editReason,
-        keyNumber: editKeyNo
-      });
-      setShowEditDrawer(false);
-      setSelectedCust(null);
-      fetchCustomers();
-    } catch (err) {
-      alert(err.message || 'Update failed');
     }
   };
 
@@ -4315,7 +4314,7 @@ function SuperCustomersView({ api, searchDispatch }) {
           <h1>Customer Registry</h1>
           <p>Supervise and edit duplicate-key compliance records across every shop workspace on Kee.</p>
         </div>
-        <button onClick={openCreateDrawer} className="btn btn-primary">
+        <button onClick={openCreateWizard} className="btn btn-primary">
           <Plus />
           <span>Create Customer</span>
         </button>
@@ -4380,9 +4379,6 @@ function SuperCustomersView({ api, searchDispatch }) {
                     <button onClick={() => setViewCust(c)} className="icon-btn" title="View compliance file">
                       <Eye />
                     </button>
-                    <button onClick={() => handleEditClick(c)} className="icon-btn" title="Edit customer record">
-                      <Edit />
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -4392,192 +4388,23 @@ function SuperCustomersView({ api, searchDispatch }) {
         )}
       </div>
 
-      {/* Create Customer drawer (Super Admin, shop-selectable) */}
-      {showCreateDrawer && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-end" style={{ background: 'rgba(5,4,3,0.82)' }}>
-          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 440, height: '100%', borderRadius: 0, overflowY: 'auto', padding: 28 }}>
-            <div className="flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 18 }}>
-              <div>
-                <span className="eyebrow" style={{ marginBottom: 4 }}><Plus /> Registry Create</span>
-                <h2 style={{ fontSize: 19 }}>Create Customer</h2>
-              </div>
-              <button onClick={() => setShowCreateDrawer(false)} className="icon-btn">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit}>
-              {createError && (
-                <div style={{ background: 'var(--red-dim)', color: 'var(--red)', fontSize: 12.5, fontWeight: 700, padding: '10px 12px', borderRadius: 10, marginBottom: 16 }}>
-                  {createError}
-                </div>
-              )}
-
-              <div className="field">
-                <label>Shop</label>
-                <div className="input-wrap">
-                  <Store />
-                  <select required value={createShopId} onChange={(e) => setCreateShopId(e.target.value)}>
-                    <option value="">Select a shop&hellip;</option>
-                    {shops.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Full Customer Name</label>
-                <div className="input-wrap">
-                  <User />
-                  <input type="text" required value={createName} onChange={(e) => setCreateName(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Phone Number</label>
-                <div className="input-wrap">
-                  <Phone />
-                  <input type="tel" required value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Registered Address</label>
-                <div className="input-wrap">
-                  <MapPin />
-                  <input type="text" value={createAddress} onChange={(e) => setCreateAddress(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>ID Type</label>
-                  <div className="input-wrap">
-                    <ShieldCheck />
-                    <input type="text" value={createProofType} onChange={(e) => setCreateProofType(e.target.value)} />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>ID Proof Number</label>
-                  <div className="input-wrap">
-                    <Hash />
-                    <input type="text" value={createProofNo} onChange={(e) => setCreateProofNo(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Reason for Duplicate Key</label>
-                <div className="input-wrap">
-                  <FileText />
-                  <input type="text" value={createReason} onChange={(e) => setCreateReason(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Cut Key Code</label>
-                <div className="input-wrap">
-                  <KeyRound />
-                  <input type="text" required value={createKeyNo} onChange={(e) => setCreateKeyNo(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 4 }}>
-                <button type="button" onClick={() => setShowCreateDrawer(false)} className="btn btn-ghost">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={createSubmitting}>
-                  {createSubmitting ? 'Creating…' : 'Create Customer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Edit Customer Profile drawer */}
-      {showEditDrawer && selectedCust && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-end" style={{ background: 'rgba(5,4,3,0.82)' }}>
-          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 440, height: '100%', borderRadius: 0, overflowY: 'auto', padding: 28 }}>
-            <div className="flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 18 }}>
-              <div>
-                <span className="eyebrow" style={{ marginBottom: 4 }}><Edit /> Registry Edit</span>
-                <h2 style={{ fontSize: 19 }}>Modify Customer Record</h2>
-              </div>
-              <button onClick={() => setShowEditDrawer(false)} className="icon-btn">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateSubmit}>
-              <div className="field">
-                <label>Full Customer Name</label>
-                <div className="input-wrap">
-                  <User />
-                  <input type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Phone Number</label>
-                <div className="input-wrap">
-                  <Phone />
-                  <input type="tel" required value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Registered Address</label>
-                <div className="input-wrap">
-                  <MapPin />
-                  <input type="text" required value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>ID Type</label>
-                  <div className="input-wrap">
-                    <ShieldCheck />
-                    <input type="text" required value={editProofType} onChange={(e) => setEditProofType(e.target.value)} />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>ID Proof Number</label>
-                  <div className="input-wrap">
-                    <Hash />
-                    <input type="text" required value={editProofNo} onChange={(e) => setEditProofNo(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Reason for Duplicate Key</label>
-                <div className="input-wrap">
-                  <FileText />
-                  <input type="text" required value={editReason} onChange={(e) => setEditReason(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Cut Key Code</label>
-                <div className="input-wrap">
-                  <KeyRound />
-                  <input type="text" required value={editKeyNo} onChange={(e) => setEditKeyNo(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 4 }}>
-                <button type="button" onClick={() => setShowEditDrawer(false)} className="btn btn-ghost">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Changes
-                </button>
-              </div>
-            </form>
+      {/* Create Customer - full-screen overlay hosting the SAME multi-step
+          CustomerRegistrationWizard used by Shop Admin, in superAdminMode
+          (adds the required Shop dropdown on Step 1). */}
+      {showCreateWizard && createPortal(
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: 'var(--bg-0, #0b0a09)' }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 20px 60px' }}>
+            <CustomerRegistrationWizard
+              t={t}
+              api={api}
+              superAdminMode
+              shops={shops}
+              onCancel={() => setShowCreateWizard(false)}
+              onDone={() => {
+                setShowCreateWizard(false);
+                fetchCustomers();
+              }}
+            />
           </div>
         </div>,
         document.body
@@ -4668,7 +4495,7 @@ function SuperCustomersView({ api, searchDispatch }) {
                 {viewCust.documents.map(d => (
                   <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
                     <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
-                    <button type="button" onClick={() => downloadAsset(d.fileUrl, d.fileKey || 'document')} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} className="hover:underline">Download</button>
+                    <button type="button" onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} className="hover:underline">Download</button>
                   </div>
                 ))}
               </div>
@@ -4704,14 +4531,8 @@ function KeysCatalogView({ api, searchDispatch }) {
 
   // Form states
   const [keyNumber, setKeyNumber] = useState('');
-  const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');
-  const [blankNumber, setBlankNumber] = useState('');
-  const [frontImageUrl, setFrontImageUrl] = useState('');
   const [backImageUrl, setBackImageUrl] = useState('');
-  const [description, setDescription] = useState('');
-  const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState('ACTIVE');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -4734,10 +4555,7 @@ function KeysCatalogView({ api, searchDispatch }) {
     e.preventDefault();
     setErrorMsg('');
     try {
-      const dto = {
-        keyNumber, brand, category, blankNumber,
-        frontImageUrl, backImageUrl, description, notes, status
-      };
+      const dto = { keyNumber, category, backImageUrl };
 
       if (editKey) {
         await api.updateMasterKey(editKey.id, dto);
@@ -4755,14 +4573,8 @@ function KeysCatalogView({ api, searchDispatch }) {
   const handleEditClick = (k) => {
     setEditKey(k);
     setKeyNumber(k.keyNumber);
-    setBrand(k.brand);
     setCategory(k.category);
-    setBlankNumber(k.blankNumber);
-    setFrontImageUrl(k.frontImageUrl || '');
     setBackImageUrl(k.backImageUrl || '');
-    setDescription(k.description || '');
-    setNotes(k.notes || '');
-    setStatus(k.status);
     setShowAddModal(true);
   };
 
@@ -4779,14 +4591,8 @@ function KeysCatalogView({ api, searchDispatch }) {
   const resetForm = () => {
     setEditKey(null);
     setKeyNumber('');
-    setBrand('');
     setCategory('');
-    setBlankNumber('');
-    setFrontImageUrl('');
     setBackImageUrl('');
-    setDescription('');
-    setNotes('');
-    setStatus('ACTIVE');
     setErrorMsg('');
   };
 
@@ -4813,7 +4619,7 @@ function KeysCatalogView({ api, searchDispatch }) {
           <Search />
           <input
             type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search catalogue by code, category, brand name, specs reference&hellip;"
+            placeholder="Search catalogue by code, category, specs reference&hellip;"
             style={{ fontSize: 14 }}
           />
           {searchQuery && (
@@ -4832,10 +4638,7 @@ function KeysCatalogView({ api, searchDispatch }) {
       ) : (() => {
         const filteredKeys = keys.filter(k =>
           (k.keyNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (k.brand || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (k.category || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (k.blankNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (k.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+          (k.category || '').toLowerCase().includes(searchQuery.toLowerCase())
         );
 
         if (filteredKeys.length === 0) {
@@ -4852,24 +4655,14 @@ function KeysCatalogView({ api, searchDispatch }) {
             {filteredKeys.map(k => (
               <div key={k.id} className="product-card">
                 <div className="product-img">
-                  {k.frontImageUrl ? (
-                    <img src={k.frontImageUrl} alt="Key blank profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <KeyRound />
-                  )}
+                  <KeyRound />
                   <span className="product-tag">{k.category}</span>
                 </div>
                 <div className="product-body">
                   <div className="flex items-center justify-between">
                     <span className="pname">{k.keyNumber}</span>
-                    <span className={`badge ${k.status === 'ACTIVE' ? 'badge-active' : 'badge-suspended'}`}>
-                      <span className="dot" />{k.status}
-                    </span>
                   </div>
-                  <p className="pcat">{k.brand} &bull; Blank: {k.blankNumber}</p>
-                  {k.description && (
-                    <p style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600, fontStyle: 'italic' }}>&ldquo;{k.description}&rdquo;</p>
-                  )}
+                  <p className="pcat">{k.category}</p>
                   <div className="product-foot" style={{ marginTop: 8, gap: 8 }}>
                     <button
                       onClick={() => handleEditClick(k)}
@@ -4929,29 +4722,6 @@ function KeysCatalogView({ api, searchDispatch }) {
                   </div>
                 </div>
                 <div className="field">
-                  <label>Brand Manufacturer</label>
-                  <div className="input-wrap">
-                    <Tag />
-                    <input
-                      type="text" required value={brand} onChange={(e) => setBrand(e.target.value)}
-                      placeholder="e.g. Godrej"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>Blank Number Reference</label>
-                  <div className="input-wrap">
-                    <KeyRound />
-                    <input
-                      type="text" required value={blankNumber} onChange={(e) => setBlankNumber(e.target.value)}
-                      placeholder="e.g. GD-901"
-                    />
-                  </div>
-                </div>
-                <div className="field">
                   <label>Category Type</label>
                   <div className="input-wrap">
                     <Layers />
@@ -4963,56 +4733,15 @@ function KeysCatalogView({ api, searchDispatch }) {
                 </div>
               </div>
 
-              <div className="form-grid">
-                <div className="field">
-                  <label>Front Image URL</label>
-                  <div className="input-wrap">
-                    <Camera />
-                    <input
-                      type="text" value={frontImageUrl} onChange={(e) => setFrontImageUrl(e.target.value)}
-                      placeholder="https://images..."
-                    />
-                  </div>
+              <div className="field">
+                <label>Back Image URL</label>
+                <div className="input-wrap">
+                  <Camera />
+                  <input
+                    type="text" value={backImageUrl} onChange={(e) => setBackImageUrl(e.target.value)}
+                    placeholder="https://images..."
+                  />
                 </div>
-                <div className="field">
-                  <label>Back Image URL</label>
-                  <div className="input-wrap">
-                    <Camera />
-                    <input
-                      type="text" value={backImageUrl} onChange={(e) => setBackImageUrl(e.target.value)}
-                      placeholder="https://images..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="field">
-                <label>Product Description</label>
-                <textarea
-                  rows={2} value={description} onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Grooves details..."
-                  style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 13, padding: '13px 15px', fontSize: 13.5, outline: 'none', resize: 'vertical' }}
-                />
-              </div>
-
-              <div className="field">
-                <label>Internal Setup Notes</label>
-                <textarea
-                  rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Cutter machine setup guidance..."
-                  style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 13, padding: '13px 15px', fontSize: 13.5, outline: 'none', resize: 'vertical' }}
-                />
-              </div>
-
-              <div className="field">
-                <label>Catalog Status</label>
-                <select
-                  className="sel"
-                  value={status} onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="ACTIVE">Active (Searchable by shops)</option>
-                  <option value="INACTIVE">Inactive (Hidden)</option>
-                </select>
               </div>
 
               <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 4 }}>
@@ -5464,7 +5193,7 @@ function PromotionsView({ api, user, searchDispatch }) {
           <p>
             {isSuperAdmin
               ? 'Manage the shared inventory feed, banner ad campaigns and shop offers across the platform.'
-              : 'Browse and list products shared across every shop on the platform, OLX-style.'}
+              : 'Browse and list products shared across every shop on the platform'}
           </p>
         </div>
       </div>
@@ -6394,9 +6123,8 @@ function KeysSearchView({ api, searchDispatch }) {
       let matchedKeys = allMasterKeys;
       if (query) {
         const q = query.toLowerCase();
-        matchedKeys = allMasterKeys.filter(k => 
+        matchedKeys = allMasterKeys.filter(k =>
           (k.keyNumber && k.keyNumber.toLowerCase().includes(q)) ||
-          (k.brand && k.brand.toLowerCase().includes(q)) ||
           (k.category && k.category.toLowerCase().includes(q))
         );
       }
@@ -6413,10 +6141,7 @@ function KeysSearchView({ api, searchDispatch }) {
           keySpec: spec || {
             id: `spec-${c.id}`,
             keyNumber: c.keyNumber,
-            brand: 'Manual Vehicle Key',
             category: 'Vehicle Keys',
-            blankNumber: c.keyNumber,
-            frontImageUrl: null,
             backImageUrl: null
           },
           customer: c
@@ -6448,7 +6173,7 @@ function KeysSearchView({ api, searchDispatch }) {
         <div>
           <div className="eyebrow"><Search /> Duplicate Key Lookup</div>
           <h1>Master Key Catalog Search</h1>
-          <p>Lookup blank specifications, brand numbers, and customer registry records in seconds.</p>
+          <p>Lookup blank specifications, key codes, and customer registry records in seconds.</p>
         </div>
       </div>
 
@@ -6487,19 +6212,14 @@ function KeysSearchView({ api, searchDispatch }) {
               style={{ cursor: 'pointer' }}
             >
               <div className="product-img">
-                {r.keySpec.frontImageUrl ? (
-                  <img src={r.keySpec.frontImageUrl} alt="Front preview" className="w-full h-full object-cover" />
-                ) : (
-                  <KeyRound />
-                )}
+                <KeyRound />
                 <span className="product-tag">{r.keySpec.category}</span>
               </div>
               <div className="product-body">
                 <div className="flex items-center justify-between" style={{ gap: 8 }}>
                   <span className="pname" style={{ minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{r.keySpec.keyNumber}</span>
-                  <span className="pcat" style={{ marginBottom: 0, flexShrink: 0 }}>{r.keySpec.brand}</span>
+                  <span className="pcat" style={{ marginBottom: 0, flexShrink: 0 }}>{r.keySpec.category}</span>
                 </div>
-                <p className="pcat">Blank: {r.keySpec.blankNumber}</p>
                 {r.customer && (
                   <div className="space-y-1">
                     <span className="badge badge-active"><span className="dot" />Registered Customer Key</span>
@@ -6535,42 +6255,15 @@ function KeysSearchView({ api, searchDispatch }) {
 
             <div className="grid grid-cols-2 gap-4 text-xs font-semibold" style={{ marginBottom: 18 }}>
               <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Brand Manufacturer</span>
-                <span style={{ color: 'var(--text-0)' }}>{selectedResult.keySpec.brand}</span>
-              </div>
-              <div>
                 <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Lock Category</span>
                 <span style={{ color: 'var(--text-0)' }}>{selectedResult.keySpec.category}</span>
               </div>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Blank Number Reference</span>
-                <span style={{ color: 'var(--text-0)' }}>{selectedResult.keySpec.blankNumber}</span>
-              </div>
             </div>
 
-            {selectedResult.keySpec.frontImageUrl && (
-              <div className="grid grid-cols-2 gap-4" style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
-                <div>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Front Profile</span>
-                  <img src={selectedResult.keySpec.frontImageUrl} alt="Front profile" style={{ width: '100%', height: 128, borderRadius: 12, border: '1px solid var(--border-2)' }} className="object-cover" />
-                </div>
-                <div>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Back Profile</span>
-                  {selectedResult.keySpec.backImageUrl ? (
-                    <img src={selectedResult.keySpec.backImageUrl} alt="Back profile" style={{ width: '100%', height: 128, borderRadius: 12, border: '1px solid var(--border-2)' }} className="object-cover" />
-                  ) : (
-                    <div style={{ height: 128, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
-                      <KeyRound style={{ width: 18, height: 18, color: 'var(--text-3)' }} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {selectedResult.keySpec.description && (
+            {selectedResult.keySpec.backImageUrl && (
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Description</span>
-                <p style={{ fontSize: 12.5, color: 'var(--text-1)', fontWeight: 600, fontStyle: 'italic', marginTop: 2 }}>&ldquo;{selectedResult.keySpec.description}&rdquo;</p>
+                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Back Profile</span>
+                <img src={selectedResult.keySpec.backImageUrl} alt="Back profile" style={{ width: '100%', height: 128, borderRadius: 12, border: '1px solid var(--border-2)' }} className="object-cover" />
               </div>
             )}
 
@@ -6697,10 +6390,14 @@ function KeysSearchView({ api, searchDispatch }) {
   );
 }
 
-function CustomerRegistrationWizard({ t, api }) {
+function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = [], onDone, onCancel }) {
   const [step, setStep] = useState(1);
   const [keysList, setKeysList] = useState([]);
-  
+
+  // Super Admin only: which shop this customer is being registered under.
+  // Required before Step 1 can be completed - see the Shop dropdown below.
+  const [selectedShopId, setSelectedShopId] = useState('');
+
   // Form fields
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -6738,24 +6435,37 @@ function CustomerRegistrationWizard({ t, api }) {
   const [longitude, setLongitude] = useState(null);
   const [gpsTimestamp, setGpsTimestamp] = useState(null);
   const [gpsError, setGpsError] = useState('');
+  const [gpsErrorKind, setGpsErrorKind] = useState('');
   const [isCapturingGps, setIsCapturingGps] = useState(false);
   const [capturedAddress, setCapturedAddress] = useState('');
 
+  // Shop Admin: fetch their own shop's key catalog once on mount. Super Admin:
+  // wait until a shop has been selected (Step 1's required dropdown), then
+  // (re-)fetch scoped to that shop whenever the selection changes.
   useEffect(() => {
+    if (superAdminMode && !selectedShopId) {
+      setKeysList([]);
+      setKeyNumber('');
+      setMasterKeyId('');
+      return;
+    }
     const fetchKeys = async () => {
       try {
-        const res = await api.getMasterKeys();
+        const res = await api.getMasterKeys('', superAdminMode ? selectedShopId : '');
         setKeysList(res);
         if (res.length > 0) {
           setKeyNumber(res[0].keyNumber);
           setMasterKeyId(res[0].id);
+        } else {
+          setKeyNumber('');
+          setMasterKeyId('');
         }
       } catch (e) {
         console.error(e);
       }
     };
     fetchKeys();
-  }, []);
+  }, [superAdminMode, selectedShopId]);
 
   useEffect(() => {
     if (addressLine || district || stateVal) {
@@ -6770,49 +6480,45 @@ function CustomerRegistrationWizard({ t, api }) {
   // line / state / district dropdowns. All of these stay fully editable afterwards
   // (this is a manual, explicit action - nothing auto-runs on the Review step
   // anymore, which is now a pure read-only summary).
-  const captureCustomerLocation = () => {
-    if (!navigator.geolocation) {
-      setGpsError('Geolocation is not supported on this device.');
+  const captureCustomerLocation = async () => {
+    setGpsError('');
+    setGpsErrorKind('');
+    setIsCapturingGps(true);
+    let lat, lng;
+    try {
+      ({ lat, lng } = await resolveCurrentLocation());
+    } catch (e) {
+      setGpsError(e.message);
+      setGpsErrorKind(e.kind || 'unavailable');
+      setIsCapturingGps(false);
       return;
     }
-    setGpsError('');
-    setIsCapturingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setLatitude(lat);
-        setLongitude(lng);
-        setGpsTimestamp(new Date().toISOString());
-        try {
-          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.locality || data.city) {
-              setAddressLine(data.locality || data.city);
-            }
-            const matchedState = Object.keys(INDIAN_STATES_DISTRICTS).find(
-              st => st.toLowerCase() === (data.principalSubdivision || '').toLowerCase()
-            );
-            if (matchedState) {
-              setStateVal(matchedState);
-              const list = INDIAN_STATES_DISTRICTS[matchedState] || [];
-              const matchedDistrict = list.find(dt => dt.toLowerCase() === (data.city || data.locality || '').toLowerCase());
-              setDistrict(matchedDistrict || list[0] || district);
-            }
-            const parts = [data.locality, data.city, data.principalSubdivision, data.countryName].filter(Boolean);
-            if (parts.length > 0) setCapturedAddress(parts.join(', '));
-          }
-        } catch (e) {
-          console.warn('Reverse geocoding failed:', e);
+    setLatitude(lat);
+    setLongitude(lng);
+    setGpsTimestamp(new Date().toISOString());
+    try {
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.locality || data.city) {
+          setAddressLine(data.locality || data.city);
         }
-        setIsCapturingGps(false);
-      },
-      () => {
-        setIsCapturingGps(false);
-        setGpsError('Unable to fetch current location. Please allow location access or enter the address manually.');
+        const matchedState = Object.keys(INDIAN_STATES_DISTRICTS).find(
+          st => st.toLowerCase() === (data.principalSubdivision || '').toLowerCase()
+        );
+        if (matchedState) {
+          setStateVal(matchedState);
+          const list = INDIAN_STATES_DISTRICTS[matchedState] || [];
+          const matchedDistrict = list.find(dt => dt.toLowerCase() === (data.city || data.locality || '').toLowerCase());
+          setDistrict(matchedDistrict || list[0] || district);
+        }
+        const parts = [data.locality, data.city, data.principalSubdivision, data.countryName].filter(Boolean);
+        if (parts.length > 0) setCapturedAddress(parts.join(', '));
       }
-    );
+    } catch (e) {
+      console.warn('Reverse geocoding failed:', e);
+    }
+    setIsCapturingGps(false);
   };
 
   const startWebcam = async () => {
@@ -6922,7 +6628,7 @@ function CustomerRegistrationWizard({ t, api }) {
 
     // Duplicate key validation check across current customer registry
     try {
-      const allCusts = await api.getCustomers();
+      const allCusts = superAdminMode ? await api.getSuperCustomers() : await api.getCustomers();
       const duplicate = allCusts.find(c => c.keyNumber.toLowerCase() === keyNumber.trim().toLowerCase());
       if (duplicate) {
         setDuplicateKeyWarning(true);
@@ -6970,15 +6676,13 @@ function CustomerRegistrationWizard({ t, api }) {
 
       if (!matchKey && keyNumber) {
         manualKey = {
-          brand: 'Manual Input',
           category: 'Vehicle Keys',
-          blankNumber: keyNumber,
         };
       } else if (matchKey) {
         finalMasterKeyId = matchKey.id;
       }
 
-      const customer = await api.createCustomer({
+      const payload = {
         name, phone, address, idProofType, idProofNumber, reason,
         keyNumber, vehicleNumber, masterKeyId: finalMasterKeyId, manualKey,
         latitude: finalLat,
@@ -6986,20 +6690,29 @@ function CustomerRegistrationWizard({ t, api }) {
         mapsLink: `https://www.google.com/maps?q=${finalLat},${finalLng}`,
         capturedAddress: capturedAddress || 'Connaught Place, New Delhi, India',
         photoBase64
-      });
+      };
+
+      const customer = superAdminMode
+        ? await api.createSuperCustomer({ shopId: selectedShopId, ...payload })
+        : await api.createCustomer(payload);
 
       for (const doc of uploadedDocs) {
         await api.uploadDocument(customer.id, doc.type, doc.file);
       }
 
       alert('Customer compliance record logged successfully!');
-      resetWizard();
+      if (superAdminMode && onDone) {
+        onDone();
+      } else {
+        resetWizard();
+      }
     } catch (e) {
       alert(`Submission failed: ${e.message}`);
     }
   };
 
   const resetWizard = () => {
+    setSelectedShopId('');
     setName('');
     setPhone('');
     setAddress('N/A');
@@ -7048,9 +6761,14 @@ function CustomerRegistrationWizard({ t, api }) {
       <div className="page-head">
         <div>
           <div className="eyebrow"><UserPlus /> New Customer</div>
-          <h1>{t('register')}</h1>
+          <h1>{superAdminMode ? 'Register Customer' : t('register')}</h1>
           <p>Multi-step compliance onboarding — key issuance, identity capture &amp; GPS-stamped address, in five quick steps.</p>
         </div>
+        {superAdminMode && onCancel && (
+          <button type="button" onClick={onCancel} className="btn btn-ghost">
+            <X className="h-4 w-4" /><span>Cancel</span>
+          </button>
+        )}
       </div>
 
       <div className="card wizard-card">
@@ -7081,6 +6799,24 @@ function CustomerRegistrationWizard({ t, api }) {
             <div className="animate-fade-in">
               <h3>Contact &amp; Key Credentials</h3>
               <p className="desc">Register the customer's contact details, vehicle &amp; key code, and residential address.</p>
+
+              {superAdminMode && (
+                <div className="field full" style={{ marginBottom: 20 }}>
+                  <label>Shop</label>
+                  <div className="input-wrap">
+                    <Store />
+                    <select required value={selectedShopId} onChange={(e) => setSelectedShopId(e.target.value)}>
+                      <option value="">Select a shop&hellip;</option>
+                      {shops.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginTop: 6 }}>
+                    This customer, and its key code, will be registered under the selected shop's workspace.
+                  </p>
+                </div>
+              )}
 
               {duplicateKeyWarning && (
                 <div className="animate-fade-in" style={{ display: 'flex', gap: 12, background: 'var(--red-dim)', border: '1px solid rgba(242,86,77,0.3)', borderRadius: 16, padding: 16, marginBottom: 20 }}>
@@ -7158,7 +6894,21 @@ function CustomerRegistrationWizard({ t, api }) {
                     <MapPin />
                     <input type="text" required value={addressLine} onChange={(e) => setAddressLine(e.target.value)} placeholder="e.g. Flat 101, Park Avenue" />
                   </div>
-                  {gpsError && <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700, marginTop: 6 }}>{gpsError}</p>}
+                  {gpsError && (
+                    <div style={{ marginTop: 6 }}>
+                      <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700 }}>{gpsError}</p>
+                      {gpsErrorKind === 'disabled' && (
+                        <button
+                          type="button"
+                          onClick={openDeviceLocationSettings}
+                          className="cursor-pointer select-none"
+                          style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', marginTop: 2 }}
+                        >
+                          Open Location Settings
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {latitude && longitude && !gpsError && (
                     <p style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginTop: 6 }}>GPS captured: {latitude.toFixed(5)}, {longitude.toFixed(5)}</p>
                   )}
@@ -7368,7 +7118,7 @@ function CustomerRegistrationWizard({ t, api }) {
             {step === 1 && (
               <button
                 type="button" className="btn btn-primary"
-                disabled={!name || !phone || !keyNumber || !vehicleNumber || !otpVerified || !addressLine || !district || !stateVal || duplicateKeyWarning}
+                disabled={!name || !phone || !keyNumber || !vehicleNumber || !otpVerified || !addressLine || !district || !stateVal || duplicateKeyWarning || (superAdminMode && !selectedShopId)}
                 onClick={() => setStep(2)}
               >
                 Continue <ArrowRight className="h-4 w-4" />
@@ -7665,7 +7415,7 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
                         <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
                         <button
                           type="button"
-                          onClick={() => downloadAsset(d.fileUrl, d.fileKey || 'document')}
+                          onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')}
                           style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }}
                           className="hover:underline"
                         >
@@ -8476,7 +8226,7 @@ function ShopSettingsView({ t, api }) {
                         <>
                           <button
                             type="button"
-                            onClick={() => downloadAsset(value.fileUrl, `${fileName}${isPdf ? '.pdf' : ''}`)}
+                            onClick={() => downloadAsset(value.fileUrl, value.originalName || filenameForAsset(value.fileUrl, fileName))}
                             className="btn btn-primary btn-sm"
                             style={{ flex: 1, fontSize: 10.5, padding: '8px 10px' }}
                           >

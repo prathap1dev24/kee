@@ -48,15 +48,13 @@ export class KeyService {
     return this.tenantService.prisma.masterKey.delete({ where: { id } });
   }
 
-  // SUPER ADMIN: List/Search Keys across ALL shops (Query filters based on brand, category, keyNumber)
+  // SUPER ADMIN: List/Search Keys across ALL shops (Query filters based on category, keyNumber)
   async getKeys(search?: string) {
     const whereClause: any = {};
     if (search) {
       whereClause.OR = [
         { keyNumber: { contains: search, mode: 'insensitive' } },
-        { brand: { contains: search, mode: 'insensitive' } },
         { category: { contains: search, mode: 'insensitive' } },
-        { blankNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
     return this.tenantService.prisma.masterKey.findMany({
@@ -72,9 +70,7 @@ export class KeyService {
     if (search) {
       whereClause.OR = [
         { keyNumber: { contains: search, mode: 'insensitive' } },
-        { brand: { contains: search, mode: 'insensitive' } },
         { category: { contains: search, mode: 'insensitive' } },
-        { blankNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
     return this.tenantService.prisma.masterKey.findMany({

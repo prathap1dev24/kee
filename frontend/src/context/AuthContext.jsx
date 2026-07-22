@@ -191,9 +191,12 @@ export const AuthProvider = ({ children }) => {
     updateSubscription: async (shopId, dto) => request(`/api/super/subscriptions/${shopId}`, 'POST', dto),
 
     // --- MASTER KEYS (shop-scoped for Shop Admin, all-shops for Super Admin) ---
-    getMasterKeys: async (search = '') => {
+    // When Super Admin passes a shopId (e.g. registering a customer on behalf of
+    // a shop they picked in the wizard), scope the catalog to that shop instead
+    // of returning the global all-shops list.
+    getMasterKeys: async (search = '', shopId = '') => {
       const url = user.role === 'SUPER_ADMIN'
-        ? `/api/super/keys?search=${search}`
+        ? (shopId ? `/api/super/shops/${shopId}/keys?search=${search}` : `/api/super/keys?search=${search}`)
         : `/api/shop/keys/search?query=${search}`;
       return request(url);
     },
@@ -210,11 +213,17 @@ export const AuthProvider = ({ children }) => {
     createCustomer: async (dto) => request('/api/shop/customers', 'POST', dto),
     updateCustomer: async (id, dto) => request(`/api/shop/customers/${id}`, 'PUT', dto),
 
+    // Super Admin creating a customer on behalf of a shop (see the unified
+    // Customer Registration wizard) posts docs against the /api/super/customers
+    // route instead, since /api/shop/customers/* is gated to SHOP_ADMIN only.
     uploadDocument: async (customerId, documentType, file) => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('documentType', documentType);
-      return request(`/api/shop/customers/${customerId}/docs`, 'POST', formData, true);
+      const url = user.role === 'SUPER_ADMIN'
+        ? `/api/super/customers/${customerId}/docs`
+        : `/api/shop/customers/${customerId}/docs`;
+      return request(url, 'POST', formData, true);
     },
 
     deleteCustomerDocument: async (customerId, documentId) => {

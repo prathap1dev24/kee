@@ -41,7 +41,7 @@ describe('CustomerService', () => {
         name: 'Alice',
         phone: '9999999999',
         keyNumber: 'TN12345',
-        manualKey: { brand: 'Manual Input', category: 'Vehicle Keys', blankNumber: 'TN12345' },
+        manualKey: { category: 'Vehicle Keys' },
       } as any);
 
       expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
@@ -51,10 +51,7 @@ describe('CustomerService', () => {
         create: {
           shopId: 'shop-1',
           keyNumber: 'TN12345',
-          brand: 'Manual Input',
           category: 'Vehicle Keys',
-          blankNumber: 'TN12345',
-          status: 'ACTIVE',
         },
       });
       expect(txMock.customer.create).toHaveBeenCalledWith(
@@ -134,6 +131,7 @@ describe('CustomerService', () => {
           fileUrl: '/api/uploads/doc.png',
           fileKey: 'doc.png',
           fileSize: 123,
+          originalName: 'aadhaar.png',
         },
       });
     });

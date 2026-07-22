@@ -264,6 +264,7 @@ export class ShopService {
         fileUrl: upload.fileUrl,
         fileKey: upload.fileKey,
         fileSize: file.size,
+        originalName: file.originalname || null,
       },
     });
   }

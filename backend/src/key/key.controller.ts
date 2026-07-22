@@ -39,6 +39,17 @@ export class KeyController {
     return this.keyService.deleteKey(id);
   }
 
+  // Super Admin needs to browse a SPECIFIC shop's key catalog when creating a
+  // customer on that shop's behalf (see the Customer Registration wizard's
+  // "select shop" step). Reuses the same shop-scoped query as the Shop Admin
+  // endpoint below, just gated by the SUPER_ADMIN role with an explicit :shopId
+  // param instead of trusting req.user.shopId.
+  @Get('super/shops/:shopId/keys')
+  @Roles(Role.SUPER_ADMIN)
+  async superGetShopKeys(@Param('shopId') shopId: string, @Query('search') search?: string) {
+    return this.keyService.getShopKeys(shopId, search);
+  }
+
   // ==========================================
   // SHOP ADMIN ENDPOINTS (own shop's keys only)
   // ==========================================

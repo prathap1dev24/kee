@@ -8,16 +8,8 @@ import { PHONE_REGEX, PHONE_REGEX_MESSAGE } from '../../common/validators/phone'
 // in the SAME request as the customer, not a separate prior request).
 export class ManualKeyDto {
   @IsString()
-  @IsNotEmpty({ message: 'Brand is required' })
-  brand: string;
-
-  @IsString()
   @IsNotEmpty({ message: 'Category is required' })
   category: string;
-
-  @IsString()
-  @IsNotEmpty({ message: 'Blank number is required' })
-  blankNumber: string;
 }
 
 export class CreateCustomerDto {
