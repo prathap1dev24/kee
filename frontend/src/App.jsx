@@ -926,6 +926,7 @@ export default function App() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetOtpDevCode, setResetOtpDevCode] = useState('');
 
   // Shop Self-Registration states
   const [showRegisterShop, setShowRegisterShop] = useState(false);
@@ -951,6 +952,15 @@ export default function App() {
   const [regOtpInput, setRegOtpInput] = useState('');
   const [regOtpError, setRegOtpError] = useState('');
   const [regOtpLoading, setRegOtpLoading] = useState(false);
+  // 'phone' (real SMS via Twilio, if configured) | 'email' (real email via SMTP,
+  // if configured) — lets a tester switch to email OTP when no SMS provider is
+  // set up, without needing a real phone to receive a text.
+  const [regOtpMethod, setRegOtpMethod] = useState('phone');
+  // Testing convenience: backend only returns this when no real SMTP/Twilio
+  // provider is configured for the chosen method, so it's shown on-screen as
+  // a substitute for actual SMS/email delivery. Disappears automatically once
+  // a real provider is configured server-side.
+  const [regOtpDevCode, setRegOtpDevCode] = useState('');
 
   // Self-Registration Payment states
   const [regShowPayment, setRegShowPayment] = useState(false);
@@ -1014,8 +1024,10 @@ export default function App() {
     e.preventDefault();
     setResetError('');
     setResetLoading(true);
+    setResetOtpDevCode('');
     try {
-      await api.sendOtp(resetIdentifier, resetMethod || 'email', 'reset');
+      const result = await api.sendOtp(resetIdentifier, resetMethod || 'email', 'reset');
+      if (result?.devCode) setResetOtpDevCode(result.devCode);
       setOtpSent(true);
     } catch (err) {
       setResetError(err.message || 'Failed to dispatch verification code');
@@ -1067,6 +1079,7 @@ export default function App() {
     setConfirmPassword('');
     setResetError('');
     setResetSuccess(false);
+    setResetOtpDevCode('');
   };
 
   const handleSendRegOtp = async () => {
@@ -1076,8 +1089,11 @@ export default function App() {
     }
     setRegOtpLoading(true);
     setRegOtpError('');
+    setRegOtpDevCode('');
     try {
-      await api.sendOtp(regPhone, 'phone', 'register');
+      const identifier = regOtpMethod === 'email' ? regEmail : regPhone;
+      const result = await api.sendOtp(identifier, regOtpMethod, 'register');
+      if (result?.devCode) setRegOtpDevCode(result.devCode);
       setRegOtpSent(true);
     } catch (err) {
       setRegOtpError(err.message || 'Failed to dispatch verification OTP.');
@@ -1091,7 +1107,8 @@ export default function App() {
     setRegOtpError('');
     setRegOtpLoading(true);
     try {
-      await api.verifyOtp(regPhone, 'phone', 'register', regOtpInput);
+      const identifier = regOtpMethod === 'email' ? regEmail : regPhone;
+      await api.verifyOtp(identifier, regOtpMethod, 'register', regOtpInput);
       setRegOtpVerified(true);
       setRegStep(3);
     } catch (err) {
@@ -1473,6 +1490,14 @@ export default function App() {
                     <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6, marginBottom: 14 }}>
                       A 4-digit code has been dispatched to <span style={{ color: 'var(--gold)', fontWeight: 800 }}>{resetIdentifier}</span>.
                     </p>
+                    {resetOtpDevCode && (
+                      <div style={{ background: 'var(--card-2)', border: '1.5px dashed var(--gold)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', marginBottom: 14 }}>
+                        <p style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
+                          Testing mode &mdash; no {resetMethod === 'phone' ? 'SMS' : 'SMTP'} provider configured
+                        </p>
+                        <p style={{ fontSize: 20, color: 'var(--gold)', fontWeight: 800, letterSpacing: '.2em' }}>{resetOtpDevCode}</p>
+                      </div>
+                    )}
                     {resetError && <div style={{ color: 'var(--red)', fontSize: 12, fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>{resetError}</div>}
                     <div className="field">
                       <label style={{ textAlign: 'center' }}>Enter OTP</label>
@@ -1757,9 +1782,28 @@ export default function App() {
             {/* STEP 2: OTP Verification */}
             {regStep === 2 && (
               <div>
-                <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6, marginBottom: 18 }}>
-                  We need to verify your credentials. A secure OTP code will be sent via SMS to <strong style={{ color: 'var(--gold)' }}>{regPhone}</strong>.
+                <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6, marginBottom: 14 }}>
+                  We need to verify your credentials. A secure OTP code will be sent to <strong style={{ color: 'var(--gold)' }}>{regOtpMethod === 'email' ? regEmail : regPhone}</strong>.
                 </p>
+
+                {!regOtpSent && (
+                  <div className="flex justify-center gap-2" style={{ marginBottom: 16 }}>
+                    <button
+                      type="button" onClick={() => setRegOtpMethod('phone')}
+                      className={`store-tab ${regOtpMethod === 'phone' ? 'active' : ''}`}
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em' }}>Phone OTP</span>
+                    </button>
+                    <button
+                      type="button" onClick={() => setRegOtpMethod('email')}
+                      className={`store-tab ${regOtpMethod === 'email' ? 'active' : ''}`}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em' }}>Email OTP (testing)</span>
+                    </button>
+                  </div>
+                )}
 
                 {!regOtpSent ? (
                   <div className="flex justify-center" style={{ padding: '18px 0' }}>
@@ -1767,7 +1811,7 @@ export default function App() {
                       type="button" onClick={handleSendRegOtp} disabled={regOtpLoading}
                       className="btn btn-primary"
                     >
-                      {regOtpLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                      {regOtpLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : (regOtpMethod === 'email' ? <Mail className="h-4 w-4" /> : <Phone className="h-4 w-4" />)}
                       Send verification OTP
                     </button>
                   </div>
@@ -1775,8 +1819,17 @@ export default function App() {
                   <form onSubmit={handleVerifyRegOtp}>
                     {regOtpError && <div style={{ color: 'var(--red)', fontSize: 12, fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>{regOtpError}</div>}
                     <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6, marginBottom: 14 }}>
-                      A 4-digit code has been dispatched via SMS to <span style={{ color: 'var(--gold)', fontWeight: 800 }}>{regPhone}</span>.
+                      A 4-digit code has been dispatched via {regOtpMethod === 'email' ? 'email' : 'SMS'} to <span style={{ color: 'var(--gold)', fontWeight: 800 }}>{regOtpMethod === 'email' ? regEmail : regPhone}</span>.
                     </p>
+
+                    {regOtpDevCode && (
+                      <div style={{ background: 'var(--card-2)', border: '1.5px dashed var(--gold)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', marginBottom: 14 }}>
+                        <p style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
+                          Testing mode &mdash; no {regOtpMethod === 'email' ? 'SMTP' : 'SMS'} provider configured
+                        </p>
+                        <p style={{ fontSize: 20, color: 'var(--gold)', fontWeight: 800, letterSpacing: '.2em' }}>{regOtpDevCode}</p>
+                      </div>
+                    )}
 
                     <div className="field">
                       <label style={{ textAlign: 'center' }}>Enter verification OTP</label>
@@ -1789,7 +1842,7 @@ export default function App() {
 
                     <div className="flex gap-2">
                       <button
-                        type="button" onClick={() => setRegOtpSent(false)}
+                        type="button" onClick={() => { setRegOtpSent(false); setRegOtpDevCode(''); }}
                         className="btn btn-ghost" style={{ flex: 1 }}
                       >
                         Resend
@@ -6557,6 +6610,12 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [duplicateKeyWarning, setDuplicateKeyWarning] = useState(false);
+  // Customers aren't required to have an email on file, so this is a
+  // transient field used only to redirect the verification OTP to email
+  // instead of SMS when testing — it is never saved to the customer record.
+  const [otpMethod, setOtpMethod] = useState('phone');
+  const [otpTestEmail, setOtpTestEmail] = useState('');
+  const [otpDevCode, setOtpDevCode] = useState('');
 
   // Photos (Webcam support)
   const [photoBase64, setPhotoBase64] = useState(null);
@@ -6768,6 +6827,10 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
       alert('Please enter a key code first');
       return;
     }
+    if (otpMethod === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(otpTestEmail)) {
+      alert('Please enter a valid email address to receive the test OTP.');
+      return;
+    }
 
     // Duplicate key validation check across current customer registry
     try {
@@ -6783,8 +6846,11 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
 
     setDuplicateKeyWarning(false);
     setOtpError('');
+    setOtpDevCode('');
     try {
-      await api.sendOtp(phone, 'phone', 'customer_verify');
+      const identifier = otpMethod === 'email' ? otpTestEmail : phone;
+      const result = await api.sendOtp(identifier, otpMethod, 'customer_verify');
+      if (result?.devCode) setOtpDevCode(result.devCode);
       setOtpSent(true);
     } catch (e) {
       setOtpError(e.message || 'Failed to send OTP code.');
@@ -6794,7 +6860,8 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
   const handleVerifyOtp = async () => {
     setOtpError('');
     try {
-      await api.verifyOtp(phone, 'phone', 'customer_verify', enteredOtp);
+      const identifier = otpMethod === 'email' ? otpTestEmail : phone;
+      await api.verifyOtp(identifier, otpMethod, 'customer_verify', enteredOtp);
       setOtpVerified(true);
     } catch (e) {
       setOtpError(e.message || 'Invalid OTP code. Please enter the correct code.');
@@ -7007,16 +7074,43 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
                       <Phone />
                       <input
                         type="tel" required value={phone}
-                        onChange={(e) => { setPhone(e.target.value); setOtpVerified(false); setOtpSent(false); }}
+                        onChange={(e) => { setPhone(e.target.value); setOtpVerified(false); setOtpSent(false); setOtpDevCode(''); }}
                         placeholder="98765 00000"
                       />
                     </div>
                     {!otpVerified && (
-                      <button type="button" onClick={handleSendOtp} disabled={!phone || !keyNumber} className="btn btn-primary btn-sm">
+                      <button
+                        type="button" onClick={handleSendOtp}
+                        disabled={!phone || !keyNumber || (otpMethod === 'email' && !otpTestEmail)}
+                        className="btn btn-primary btn-sm"
+                      >
                         {otpSent ? 'Resend' : 'Send OTP'}
                       </button>
                     )}
                   </div>
+                  {!otpVerified && !otpSent && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button
+                        type="button" onClick={() => setOtpMethod('phone')}
+                        className={`store-tab ${otpMethod === 'phone' ? 'active' : ''}`}
+                      >
+                        <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em' }}>SMS to phone</span>
+                      </button>
+                      <button
+                        type="button" onClick={() => setOtpMethod('email')}
+                        className={`store-tab ${otpMethod === 'email' ? 'active' : ''}`}
+                      >
+                        <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em' }}>Email (testing)</span>
+                      </button>
+                      {otpMethod === 'email' && (
+                        <input
+                          type="email" value={otpTestEmail} onChange={(e) => setOtpTestEmail(e.target.value)}
+                          placeholder="test@email.com — for OTP only, not saved"
+                          style={{ flex: '1 1 220px', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 10, padding: '8px 12px', fontSize: 12, outline: 'none' }}
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="field full">
@@ -7103,8 +7197,18 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
               {otpSent && !otpVerified && (
                 <div className="animate-fade-in" style={{ background: 'var(--card-2)', border: '1.5px solid var(--border-2)', borderRadius: 16, padding: 18, marginTop: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-                    <span style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600 }}>Enter the 4-digit code sent to the customer's phone</span>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600 }}>
+                      Enter the 4-digit code sent {otpMethod === 'email' ? `to ${otpTestEmail}` : "to the customer's phone"}
+                    </span>
                   </div>
+                  {otpDevCode && (
+                    <div style={{ background: 'var(--bg-1)', border: '1.5px dashed var(--gold)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', marginBottom: 14 }}>
+                      <p style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
+                        Testing mode &mdash; no {otpMethod === 'email' ? 'SMTP' : 'SMS'} provider configured
+                      </p>
+                      <p style={{ fontSize: 20, color: 'var(--gold)', fontWeight: 800, letterSpacing: '.2em' }}>{otpDevCode}</p>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 10, maxWidth: 280 }}>
                     <input
                       type="text" maxLength={4} value={enteredOtp}
@@ -7123,7 +7227,7 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
               {otpVerified && (
                 <div className="animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--green-dim)', border: '1px solid rgba(62,207,106,0.3)', borderRadius: 14, padding: '12px 16px', marginTop: 20 }}>
                   <Check className="h-4 w-4" style={{ color: 'var(--green)' }} />
-                  <span style={{ color: 'var(--green)', fontSize: 12.5, fontWeight: 700 }}>Customer phone number OTP verified successfully.</span>
+                  <span style={{ color: 'var(--green)', fontSize: 12.5, fontWeight: 700 }}>Customer {otpMethod === 'email' ? 'email' : 'phone number'} OTP verified successfully.</span>
                 </div>
               )}
             </div>
@@ -8062,6 +8166,7 @@ function ShopSettingsView({ t, api }) {
   const [otpResetLoading, setOtpResetLoading] = useState(false);
   const [otpResetError, setOtpResetError] = useState('');
   const [otpResetSuccess, setOtpResetSuccess] = useState(false);
+  const [otpResetDevCode, setOtpResetDevCode] = useState('');
 
   useEffect(() => {
     fetchSettings();
@@ -8184,8 +8289,10 @@ function ShopSettingsView({ t, api }) {
       alert('Please enter your registered email or phone number');
       return;
     }
+    setOtpResetDevCode('');
     try {
-      await api.sendOtp(otpResetIdentifier, otpResetMethod || 'email', 'reset');
+      const result = await api.sendOtp(otpResetIdentifier, otpResetMethod || 'email', 'reset');
+      if (result?.devCode) setOtpResetDevCode(result.devCode);
       setOtpResetSent(true);
       setOtpResetError('');
     } catch (err) {
@@ -8227,6 +8334,7 @@ function ShopSettingsView({ t, api }) {
       setOtpResetOtpInput('');
       setOtpResetNewPassword('');
       setOtpResetConfirmPassword('');
+      setOtpResetDevCode('');
     } catch (err) {
       setOtpResetError(err.message || 'Failed to update password');
     } finally {
@@ -8614,6 +8722,14 @@ function ShopSettingsView({ t, api }) {
                 <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.6, marginBottom: 14 }}>
                   A 4-digit code has been dispatched to <span style={{ color: 'var(--gold)', fontWeight: 800 }}>{otpResetIdentifier}</span>.
                 </p>
+                {otpResetDevCode && (
+                  <div style={{ background: 'var(--card-2)', border: '1.5px dashed var(--gold)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', marginBottom: 14 }}>
+                    <p style={{ fontSize: 10.5, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
+                      Testing mode &mdash; no {otpResetMethod === 'phone' ? 'SMS' : 'SMTP'} provider configured
+                    </p>
+                    <p style={{ fontSize: 20, color: 'var(--gold)', fontWeight: 800, letterSpacing: '.2em' }}>{otpResetDevCode}</p>
+                  </div>
+                )}
                 <div className="field">
                   <label style={{ textAlign: 'center' }}>Enter OTP</label>
                   <input
