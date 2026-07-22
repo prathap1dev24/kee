@@ -217,6 +217,14 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // Shop Admin accounts are only allowed to sign in from the native mobile
+    // app - the web login is reserved for Super Admin. `platform` is sent by
+    // the frontend as 'native' only when running inside Capacitor; anything
+    // else (including omitted, for older clients) is treated as web.
+    if (user.role === Role.SHOP_ADMIN && loginDto.platform !== 'native') {
+      throw new UnauthorizedException('Shop Admin accounts can only sign in from the Key Shop mobile app. Please download the app to continue.');
+    }
+
     // Verify tenant is active if SHOP_ADMIN
     if (user.role === Role.SHOP_ADMIN && user.shopId) {
       const shop = await this.tenantService.prisma.shop.findUnique({

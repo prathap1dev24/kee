@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { API_BASE } from '../apiConfig';
 
 const AuthContext = createContext(null);
@@ -35,10 +36,14 @@ export const AuthProvider = ({ children }) => {
         });
       } catch (err) {}
 
+      // Tell the backend whether this is the native app or a browser, so it
+      // can enforce that Shop Admin accounts only sign in from the app.
+      const platform = Capacitor.isNativePlatform() ? 'native' : 'web';
+
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, platform }),
       });
 
       if (!response.ok) {

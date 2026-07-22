@@ -1560,6 +1560,20 @@ export default function App() {
                 </button>
               </form>
 
+              {/* Shop Admin accounts can't sign in on web (see auth.service.ts) -
+                  give them a direct way to get the app right where they'll hit
+                  that error, instead of leaving them stuck on this screen. */}
+              {!IS_NATIVE_APP && (
+                <a
+                  href="/downloads/keyshop-app.keeapp"
+                  download="KeyShop.apk"
+                  className="btn btn-outline btn-block"
+                  style={{ marginTop: 12 }}
+                >
+                  <Download className="h-4 w-4" /> Shop Admin? Download the app
+                </a>
+              )}
+
               <div className="login-foot" style={{ marginTop: 20 }}>
                 Want to register your shop?{' '}
                 <button

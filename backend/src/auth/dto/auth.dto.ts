@@ -9,6 +9,14 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })
   password: string;
+
+  // Sent by the frontend so the backend can tell a browser login apart from
+  // the native Android/iOS app (Capacitor.isNativePlatform()). Optional and
+  // defaults to 'web' when omitted, so older/unaware clients are still
+  // treated as web for the Shop Admin web-login restriction below.
+  @IsOptional()
+  @IsString()
+  platform?: string; // 'web' | 'native'
 }
 
 export class ChangePasswordDto {

@@ -18,6 +18,15 @@
         "headers": [
           { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
         ]
+      },
+      {
+        "comment": "The Android APK is deployed under a non-.apk extension because Firebase Hosting's Spark (free) plan rejects executable file extensions (.apk included) at deploy time. These headers restore the correct type/filename on download - see frontend/public/downloads/keyshop-app.keeapp.",
+        "source": "/downloads/keyshop-app.keeapp",
+        "headers": [
+          { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+          { "key": "Content-Disposition", "value": "attachment; filename=\"KeyShop.apk\"" },
+          { "key": "Cache-Control", "value": "public, max-age=3600" }
+        ]
       }
     ]
   }

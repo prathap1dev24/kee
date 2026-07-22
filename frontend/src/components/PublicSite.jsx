@@ -2,8 +2,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Key, ArrowRight, Search, MapPin, Phone, Mail, ShieldCheck, Users,
   Package, BarChart3, Building2, Sparkles, CheckCircle2, Menu, X,
-  RefreshCw, Clock, Store, Star, Send,
+  RefreshCw, Clock, Store, Star, Send, Download,
 } from 'lucide-react';
+import keyShopLogo from '../assets/branding/keyshop-logo.png';
+
+// Static Android APK, copied into public/downloads at build time (see
+// frontend/public/downloads/keyshop-app.keeapp) so Vite/Firebase Hosting
+// serves it as a plain static file - no backend involvement needed. Shop
+// Admins are web-login-restricted (see AuthContext/auth.service.ts), so
+// this is how they're expected to get the app.
+//
+// The file is deployed under a .keeapp extension (not .apk) because
+// Firebase Hosting's free Spark plan rejects executable file extensions,
+// including .apk, at deploy time. `firebase.json` sets the right
+// Content-Type/Content-Disposition, and the `download` attribute below
+// forces the browser to save it as "KeyShop.apk" regardless.
+const APK_DOWNLOAD_URL = '/downloads/keyshop-app.keeapp';
+const APK_DOWNLOAD_FILENAME = 'KeyShop.apk';
 
 /* -------------------------------------------------------------------------
  * Public marketing site shown to anonymous visitors (Home / Search / About /
@@ -88,8 +103,7 @@ function PublicNav({ page, onNavigate }) {
     <div className="public-nav">
       <div className="public-nav-inner">
         <button type="button" className="brand" onClick={() => go('home')} style={{ background: 'none', border: 'none' }}>
-          <span className="mark"><Key /></span>
-          Kee<span className="gold-dot">.</span>
+          <img src={keyShopLogo} alt="Key Shop" className="brand-logo" />
         </button>
 
         <div className="public-navtabs">
@@ -106,6 +120,9 @@ function PublicNav({ page, onNavigate }) {
         </div>
 
         <div className="public-nav-actions">
+          <a href={APK_DOWNLOAD_URL} download={APK_DOWNLOAD_FILENAME} className="btn btn-outline btn-sm">
+            <Download className="h-4 w-4" /> Download App
+          </a>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => go('login')}>
             Login <ArrowRight className="h-4 w-4" />
           </button>
@@ -122,6 +139,9 @@ function PublicNav({ page, onNavigate }) {
               {item.label}
             </button>
           ))}
+          <a href={APK_DOWNLOAD_URL} download={APK_DOWNLOAD_FILENAME} className="btn btn-outline btn-block">
+            <Download className="h-4 w-4" /> Download App
+          </a>
           <button type="button" className="btn btn-primary btn-block" onClick={() => go('login')}>
             Login <ArrowRight className="h-4 w-4" />
           </button>
@@ -137,8 +157,7 @@ function PublicFooter({ onNavigate }) {
       <div className="public-footer-inner">
         <div>
           <div className="brand" style={{ marginBottom: 14 }}>
-            <span className="mark"><Key /></span>
-            Kee<span className="gold-dot">.</span>
+            <img src={keyShopLogo} alt="Key Shop" className="brand-logo" />
           </div>
           <p style={{ color: 'var(--text-2)', fontSize: 13.5, fontWeight: 600, maxWidth: 320, lineHeight: 1.6 }}>
             The bold, gold-standard workspace for Indian duplicate-key shops &mdash;
