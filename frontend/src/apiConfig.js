@@ -79,12 +79,24 @@ export const downloadAsset = async (url, filename) => {
         import('@capacitor/filesystem'),
         import('@capacitor/share'),
       ]);
-      const { uri } = await Filesystem.downloadFile({
+      // @capacitor/filesystem v5.1+ (we're on v8) no longer returns a `uri`
+      // from downloadFile() itself - only `path` (and `blob`, web-only). The
+      // real file:// URI has to be resolved separately via getUri() using the
+      // same path/directory the file was just saved to. Previously this
+      // destructured a non-existent `uri` field (always undefined), which
+      // then got handed to Share.share({ url: undefined, ... }) below and
+      // threw - this is what surfaced to users as "Download errors and
+      // doesn't download".
+      await Filesystem.downloadFile({
         url: fullUrl,
         path: safeName,
         directory: Directory.Cache,
       });
-      await Share.share({ url: uri, dialogTitle: `Save ${safeName}` });
+      const { uri } = await Filesystem.getUri({ path: safeName, directory: Directory.Cache });
+      // Share.share's `url` option is for sharing a web link, not a local
+      // file - local files must go through `files` (an array of file://
+      // URIs) instead, or the OS share sheet silently rejects/ignores it.
+      await Share.share({ files: [uri], dialogTitle: `Save ${safeName}` });
     } catch (err) {
       console.error('Native file download failed:', err);
       window.alert(`Could not download "${safeName}". Please check your connection and try again.`);

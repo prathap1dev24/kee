@@ -60,7 +60,13 @@ export class KeyService {
     return this.tenantService.prisma.masterKey.findMany({
       where: whereClause,
       orderBy: { keyNumber: 'asc' },
-      include: { shop: { select: { id: true, name: true } } },
+      include: {
+        shop: { select: { id: true, name: true } },
+        // Surfaced in the Super Admin "Modify Key" dialog so an admin can see
+        // which customer compliance record(s) this key blank is tied to
+        // before editing/removing it.
+        customers: { select: { id: true, name: true, phone: true } },
+      },
     });
   }
 

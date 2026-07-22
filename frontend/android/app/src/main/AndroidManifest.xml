@@ -40,4 +40,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Camera capture (Customer/Shop Registration identity photo) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Storage/media access for document + photo picker uploads. Android 13+
+         (API 33) replaced the broad READ_EXTERNAL_STORAGE permission with
+         granular per-media-type permissions; READ_EXTERNAL_STORAGE is kept
+         with maxSdkVersion so it still applies on older OS versions where the
+         granular permissions don't exist. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 </manifest>
