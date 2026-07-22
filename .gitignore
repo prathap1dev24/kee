@@ -29,6 +29,11 @@ backend/dev-server.log
 Thumbs.db
 .vscode/
 .idea/
+.claude/
+
+# Local scratch/backup files (pre-refactor snapshots, temp assets, etc.)
+.design-backup/
+*.bak
 
 # Firebase CLI local deploy cache
 .firebase/
