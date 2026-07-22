@@ -1,4 +1,9 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+// Native bridge to SaveToDownloadsPlugin.java - see downloadAsset() below
+// for why this exists (Capacitor's built-in Filesystem plugin can't write
+// to the public Downloads folder on Android 10+ scoped storage).
+const SaveToDownloads = registerPlugin('SaveToDownloads');
 
 // Base URL for the NestJS backend. In local dev this stays empty, so
 // requests go to relative paths like /api/... which Vite's dev server
@@ -38,6 +43,23 @@ export const filenameForAsset = (url, baseName) => {
   return match ? `${baseName}.${match[1].toLowerCase()}` : baseName;
 };
 
+// Best-effort MIME type guess from a filename's extension, for the native
+// save-to-Downloads path below (Filesystem.downloadFile() on native doesn't
+// return a `blob` with its real content-type the way it does on web - see
+// the comment inside downloadAsset()).
+const MIME_TYPE_BY_EXT = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+};
+const guessMimeType = (name) => {
+  const match = /\.([a-zA-Z0-9]{2,5})$/.exec(name);
+  return (match && MIME_TYPE_BY_EXT[match[1].toLowerCase()]) || 'application/octet-stream';
+};
+
 // Triggers a real file download rather than a page/tab navigation.
 //
 // Earlier version of this fetched the file as a blob first (await
@@ -64,21 +86,32 @@ export const filenameForAsset = (url, baseName) => {
 // page." Fetching over the WebView is also unreliable for the Firebase
 // Storage-backed URLs. So on native platforms we bypass the WebView
 // entirely: Filesystem.downloadFile() uses the native OS HTTP stack (not
-// subject to WebView navigation rules or page-level CORS), saves the file
-// into the app's private cache dir, and then the OS share sheet
-// (@capacitor/share) lets the user save it to Downloads / open it in
-// another app - preserving the original filename and extension throughout.
+// subject to WebView navigation rules or page-level CORS) to fetch the file
+// into the app's private cache dir, then the native SaveToDownloads plugin
+// (android/app/src/main/java/com/kee/app/SaveToDownloadsPlugin.java) copies
+// it straight into the device's public Downloads folder - so tapping
+// Download actually downloads the file immediately, the same way a browser
+// download would, without the user having to go through a share sheet and
+// manually pick a save target.
+//
+// On Android 10+ this needs no permission prompt at all (it uses the
+// scoped-storage MediaStore.Downloads API, which Google designed to not
+// require one). On Android 9 and below it requests the classic
+// WRITE_EXTERNAL_STORAGE permission the first time - the native plugin
+// handles that prompt itself.
 export const downloadAsset = async (url, filename) => {
   if (!url) return;
   const fullUrl = getAssetUrl(url);
   const safeName = (filename || fullUrl.split('/').pop().split('?')[0] || 'download').replace(/[\\/]/g, '_');
 
   if (Capacitor.isNativePlatform()) {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+
+    // Step 1: actually fetch the file onto the device. A failure here is a
+    // real download failure (bad URL, no connection, server error) and is
+    // worth surfacing to the user.
+    let uri;
     try {
-      const [{ Filesystem, Directory }, { Share }] = await Promise.all([
-        import('@capacitor/filesystem'),
-        import('@capacitor/share'),
-      ]);
       // @capacitor/filesystem v5.1+ (we're on v8) no longer returns a `uri`
       // from downloadFile() itself - only `path` (and `blob`, web-only). The
       // real file:// URI has to be resolved separately via getUri() using the
@@ -92,14 +125,43 @@ export const downloadAsset = async (url, filename) => {
         path: safeName,
         directory: Directory.Cache,
       });
-      const { uri } = await Filesystem.getUri({ path: safeName, directory: Directory.Cache });
-      // Share.share's `url` option is for sharing a web link, not a local
-      // file - local files must go through `files` (an array of file://
-      // URIs) instead, or the OS share sheet silently rejects/ignores it.
-      await Share.share({ files: [uri], dialogTitle: `Save ${safeName}` });
+      ({ uri } = await Filesystem.getUri({ path: safeName, directory: Directory.Cache }));
     } catch (err) {
       console.error('Native file download failed:', err);
       window.alert(`Could not download "${safeName}". Please check your connection and try again.`);
+      return;
+    }
+
+    // Step 2: copy the already-downloaded file straight into the public
+    // Downloads folder via the native plugin. If that fails for any reason
+    // (older OEM storage quirks, permission denied, etc.) fall back to the
+    // OS share sheet so the user still has a way to get the file out,
+    // rather than hitting a dead end - but a failure/cancel in THAT
+    // fallback step must not show the same "could not download" alert,
+    // since the file was already genuinely downloaded in step 1 by then.
+    try {
+      await SaveToDownloads.saveFile({
+        sourcePath: uri,
+        fileName: safeName,
+        mimeType: guessMimeType(safeName),
+      });
+      window.alert(`"${safeName}" downloaded to your Downloads folder.`);
+    } catch (err) {
+      console.warn('Direct save to Downloads failed, falling back to share sheet:', err);
+      try {
+        const { Share } = await import('@capacitor/share');
+        // Share.share's `url` option is for sharing a web link, not a local
+        // file - local files must go through `files` (an array of file://
+        // URIs) instead, or the OS share sheet silently rejects/ignores it.
+        await Share.share({ files: [uri], dialogTitle: `Save ${safeName}` });
+      } catch (shareErr) {
+        // Android's chooser almost always reports back RESULT_CANCELED here
+        // even when the user picked a target and the share genuinely
+        // succeeded (see @capacitor/share's SharePlugin.java) - so this is
+        // just logged, not shown as an error, since the file is already
+        // sitting safely in the app's cache either way.
+        console.warn('Share sheet dismissed or result unreported (file was already downloaded):', shareErr);
+      }
     }
     return;
   }

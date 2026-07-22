@@ -52,4 +52,12 @@
          granular permissions don't exist. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <!-- Saving downloaded documents directly to the public Downloads folder
+         (SaveToDownloadsPlugin). Only needed on Android 9 and below (API<=28)
+         - Android 10+ uses the scoped-storage MediaStore.Downloads API
+         instead, which needs no permission at all. maxSdkVersion keeps this
+         permission (and its runtime prompt) from ever being requested on
+         modern devices. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 </manifest>
