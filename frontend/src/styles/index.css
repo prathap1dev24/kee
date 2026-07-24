@@ -160,7 +160,7 @@
 /* Mobile nav drawer overlay: must render as a true full-screen overlay
    *above* every other piece of fixed/sticky mobile chrome - the header
    (.app-topbar, z-index 50), page content, any floating buttons, and the
-   fixed bottom nav bar (.mobile-bottom-nav, z-index 60) - instead of
+   fixed bottom nav bar (.mobile-bottom-nav, z-index 40) - instead of
    underneath them. Pinned to an explicit z-index comfortably higher than
    every other z-index used anywhere in the app (the next highest is 9999,
    the header search-type dropdown) so it always wins regardless of DOM
@@ -445,8 +445,15 @@
 .badge-gold .dot { background: var(--gold); }
 
 /* ===================== Mobile bottom navigation bar ===================== */
+/* z-index kept below every dialog/modal/bottom-sheet overlay in the app (the
+   `fixed inset-0 z-50` / `z-[60]` portal wrappers used throughout App.jsx)
+   so that whenever one of those opens, its backdrop naturally covers this
+   bar instead of the bar floating above the modal content. Still above
+   ordinary (non-fixed, z-auto) page content and below the mobile nav
+   drawer (99998/99999) and the app-topbar's own z-50, which never overlap
+   this bar visually anyway. */
 .mobile-bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
   display: flex; align-items: stretch; justify-content: space-around;
   background: var(--card); border-top: 1px solid var(--border);
   box-shadow: 0 -10px 30px rgba(30, 41, 59, 0.12);

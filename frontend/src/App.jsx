@@ -3168,7 +3168,7 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
           {data.shop?.logoUrl ? (
             <img src={cleanGoogleImageUrl(data.shop.logoUrl)} alt="Shop Logo" style={{ width: 48, height: 48, borderRadius: 14, objectFit: 'cover', border: '1px solid var(--border-2)' }} />
           ) : (
-            <div className="icon-badge solid" style={{ width: 48, height: 48, borderRadius: 14 }}><Store /></div>
+            <img src={keyShopLogo} alt="Key Shop" style={{ width: 58, height: 58, objectFit: 'contain', flexShrink: 0 }} />
           )}
           <div>
             <div className="eyebrow"><Store /> {t('shopTerminal')}</div>
@@ -4559,8 +4559,8 @@ function SuperCustomersView({ t, api, searchDispatch }) {
       )}
 
       {viewCust && createPortal(
-        <div className="fixed inset-0 z-50 overflow-y-auto flex justify-center p-4 md:p-10" style={{ background: 'rgba(5,4,3,0.82)' }}>
-          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 620, margin: 'auto', padding: 28 }}>
+        <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden flex justify-center p-4 md:p-10" style={{ background: 'rgba(5,4,3,0.82)' }}>
+          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: 620, margin: 'auto', padding: 28, overflowX: 'hidden' }}>
             <div className="flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 18 }}>
               <div>
                 <span className="eyebrow" style={{ marginBottom: 4 }}><FileText /> Compliance File</span>
@@ -4652,20 +4652,35 @@ function SuperCustomersView({ t, api, searchDispatch }) {
               </div>
 
               {viewCust.documents && viewCust.documents.length > 0 && (
-                <div className="reg-field space-y-2">
+                <div className="reg-field space-y-2" style={{ minWidth: 0 }}>
                   <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><FileCheck /></div><b>Attached ID Copies</b></div>
                   {viewCust.documents.map((d, di) => {
                     const docColors = ['purple', 'pink', 'blue', 'orange', 'teal', 'skyblue', 'rose', 'jgreen'];
                     const docColor = docColors[di % docColors.length];
+                    const uploaded = !!(d.fileUrl || d.fileKey);
                     return (
-                      <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className={`icon-badge ${docColor}`} style={{ width: 26, height: 26, borderRadius: 8 }}>
-                            <FileText style={{ width: 13, height: 13 }} />
-                          </div>
-                          <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
+                      <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12, minWidth: 0 }} className="flex items-center gap-2 text-xs">
+                        <div className={`icon-badge ${docColor}`} style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0 }}>
+                          <FileText style={{ width: 13, height: 13 }} />
                         </div>
-                        <button type="button" onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} className="hover:underline">Download</button>
+                        <span style={{ color: 'var(--text-1)', fontWeight: 600, flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.documentType}>{d.documentType}</span>
+                        <span
+                          className={`badge ${uploaded ? 'badge-active' : 'badge-suspended'}`}
+                          style={{ flexShrink: 0, fontSize: 9.5 }}
+                        >
+                          {uploaded ? 'Uploaded' : 'Missing'}
+                        </span>
+                        <button
+                          type="button"
+                          title="Download"
+                          aria-label="Download"
+                          disabled={!uploaded}
+                          onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')}
+                          className="icon-btn"
+                          style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, opacity: uploaded ? 1 : 0.4, cursor: uploaded ? 'pointer' : 'not-allowed' }}
+                        >
+                          <Download style={{ width: 13, height: 13 }} />
+                        </button>
                       </div>
                     );
                   })}
