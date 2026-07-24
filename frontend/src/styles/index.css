@@ -4,26 +4,37 @@
 @tailwind utilities;
 
 :root {
-  --bg-0: #eef1f7;
-  --bg-1: #e6eaf3;
+  --bg-0: #FAF6EE;
+  --bg-1: #F7F1E2;
   --card: #ffffff;
-  --card-2: #f4f6fb;
-  --border: rgba(30, 41, 59, 0.08);
-  --border-2: rgba(30, 41, 59, 0.14);
-  --gold: #4f46e5;
-  --gold-2: #7c3aed;
-  --gold-dim: rgba(79, 70, 229, 0.1);
-  --gold-dim-2: rgba(79, 70, 229, 0.18);
-  --text-0: #121017;
-  --text-1: #211f30;
-  --text-2: #2b2840;
-  --text-3: #423f57;
+  --card-2: #FBF2DA;
+  --border: rgba(122, 18, 32, 0.12);
+  --border-2: rgba(122, 18, 32, 0.22);
+  --gold: #C89416;
+  --gold-2: #F5B800;
+  --gold-dim: rgba(245, 184, 0, 0.14);
+  --gold-dim-2: rgba(245, 184, 0, 0.22);
+  --text-0: #221D16;
+  --text-1: #2A2117;
+  --text-2: #736553;
+  --text-3: #8A7A63;
   --green: #15803d;
   --green-dim: rgba(21, 128, 61, 0.14);
   --amber: #b45309;
   --amber-dim: rgba(180, 83, 9, 0.14);
   --red: #b91c1c;
   --red-dim: rgba(185, 28, 28, 0.14);
+  --maroon: #7A1220;
+  --maroon-dark: #5A0D18;
+  --black: #1E1B17;
+  --purple: #7C4DFF;
+  --pink: #F0468B;
+  --blue: #2F80ED;
+  --orange: #F2994A;
+  --jgreen: #27AE60;
+  --teal: #12B8B0;
+  --skyblue: #2D9CDB;
+  --rose: #EB5757;
   --display: 'Baloo 2', 'Nunito', sans-serif;
   --sans: 'Nunito', 'Baloo 2', sans-serif;
 }
@@ -39,7 +50,7 @@
   }
 
   body {
-    background-image: radial-gradient(circle at 1px 1px, rgba(79, 70, 229, 0.14) 1px, transparent 1px);
+    background-image: radial-gradient(circle at 1px 1px, rgba(200, 148, 22, 0.14) 1px, transparent 1px);
     background-size: 26px 26px;
   }
 
@@ -78,7 +89,7 @@
   background: linear-gradient(135deg, var(--gold), var(--gold-2));
   display: flex; align-items: center; justify-content: center;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 8px 18px rgba(200, 148, 22, 0.35);
 }
 .brand .mark svg { width: 20px; height: 20px; stroke-width: 2.6; }
 .brand .gold-dot { color: var(--gold); }
@@ -109,14 +120,14 @@
   border-radius: 999px;
   z-index: 1;
   transition: transform .35s cubic-bezier(.65, 0, .35, 1), width .35s cubic-bezier(.65, 0, .35, 1);
-  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.32);
+  box-shadow: 0 8px 18px rgba(200, 148, 22, 0.32);
 }
 
 .navmeta { display: flex; align-items: center; gap: 14px; }
 .role-pill {
   display: flex; align-items: center; gap: 6px;
   background: var(--gold-dim); color: var(--gold);
-  border: 1px solid rgba(79, 70, 229, 0.28);
+  border: 1px solid rgba(200, 148, 22, 0.28);
   padding: 6px 12px; border-radius: 999px;
   font-size: 12px; font-weight: 800; font-family: var(--display);
   letter-spacing: .02em;
@@ -169,9 +180,22 @@
 .side-link:hover { color: var(--text-0); background: var(--card-2); }
 .side-link.active {
   background: var(--gold-dim); color: var(--gold);
-  border-color: rgba(79, 70, 229, 0.28);
+  border-color: rgba(200, 148, 22, 0.28);
 }
 .side-link.active svg { color: var(--gold); }
+.side-link .nav-ico {
+  width: 27px; height: 27px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: transform .18s ease;
+}
+.side-link .nav-ico svg { width: 15px; height: 15px; color: #fff !important; }
+.side-link:hover .nav-ico { transform: scale(1.06); }
+.mbn-item .nav-ico-sm {
+  width: 30px; height: 30px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mbn-item .nav-ico-sm svg { width: 16px; height: 16px; color: #fff !important; }
+.mbn-item.active .nav-ico-sm { box-shadow: 0 0 0 2px var(--gold-dim); }
 .side-section-label {
   font-family: var(--display); font-weight: 800; font-size: 10.5px;
   color: var(--text-3); text-transform: uppercase; letter-spacing: .08em;
@@ -195,7 +219,7 @@
 .pill-badge {
   display: inline-flex; align-items: center; gap: 7px;
   background: var(--gold-dim);
-  border: 1px solid rgba(79, 70, 229, 0.25);
+  border: 1px solid rgba(200, 148, 22, 0.25);
   color: var(--gold);
   padding: 7px 16px 7px 10px;
   border-radius: 999px;
@@ -205,8 +229,8 @@
 }
 .pill-badge .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--gold); }
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.25); }
-  50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 148, 22, 0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(200, 148, 22, 0); }
 }
 
 /* buttons */
@@ -221,10 +245,10 @@
 }
 .btn svg { width: 16px; height: 16px; stroke-width: 2.4; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn-primary { background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; box-shadow: 0 14px 26px rgba(79, 70, 229, 0.32), 0 2px 4px rgba(79, 70, 229, 0.2); }
+.btn-primary { background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; box-shadow: 0 14px 26px rgba(200, 148, 22, 0.32), 0 2px 4px rgba(200, 148, 22, 0.2); }
 .btn-primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px) scale(1.015); }
 .btn-primary:active:not(:disabled) { transform: translateY(0) scale(.98); }
-.btn-outline { background: transparent; color: var(--gold); border: 1.5px solid rgba(79, 70, 229, 0.45); }
+.btn-outline { background: transparent; color: var(--gold); border: 1.5px solid rgba(200, 148, 22, 0.45); }
 .btn-outline:hover:not(:disabled) { background: var(--gold-dim); transform: translateY(-1px); }
 .btn-ghost { background: var(--card-2); color: var(--text-1); border: 1px solid var(--border-2); }
 .btn-ghost:hover:not(:disabled) { background: #eef0fb; color: var(--text-0); }
@@ -246,14 +270,26 @@
 .icon-badge.green { background: var(--green-dim); color: var(--green); }
 .icon-badge.red { background: var(--red-dim); color: var(--red); }
 .icon-badge.solid { background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; }
+/* Jewel-tone solid variants - colorful per-item icon badges used across
+   dashboard/list/form screens so each field or stat gets a distinct accent
+   colour (mirrors the design-mockups/mobile-app/v2-sectioned-cards palette). */
+.icon-badge.purple { background: var(--purple); color: #ffffff; }
+.icon-badge.pink { background: var(--pink); color: #ffffff; }
+.icon-badge.blue { background: var(--blue); color: #ffffff; }
+.icon-badge.orange { background: var(--orange); color: #ffffff; }
+.icon-badge.jgreen { background: var(--jgreen); color: #ffffff; }
+.icon-badge.teal { background: var(--teal); color: #ffffff; }
+.icon-badge.skyblue { background: var(--skyblue); color: #ffffff; }
+.icon-badge.rose { background: var(--rose); color: #ffffff; }
+.icon-badge.maroon { background: linear-gradient(135deg, var(--maroon), var(--maroon-dark)); color: #ffffff; }
 /* Product-photo cards (Used Machines / ECM / Meter / Scanning Service) get a
    much bigger image area than the normal 44px icon badge - full card width,
    fixed height, image centered and shown in full via object-fit: contain
    (never cropped), which in turn makes .dash-card taller since it's a flex
    column that just grows to fit its content. */
 .icon-badge.photo {
-  width: 100%; height: 140px; border-radius: 14px;
-  padding: 6px; overflow: hidden; background: var(--card-2);
+  width: 100%; height: 176px; border-radius: 14px;
+  padding: 3px; overflow: hidden; background: var(--card-2);
   align-self: stretch;
 }
 .icon-badge.photo img {
@@ -261,7 +297,7 @@
   border-radius: 10px; display: block;
 }
 @media (max-width: 640px) {
-  .icon-badge.photo { height: 110px; }
+  .icon-badge.photo { height: 142px; }
 }
 .icon-badge.flat-icon { background: #EAF4FD; padding: 5px; }
 .icon-badge.flat-icon svg { width: 100%; height: 100%; }
@@ -271,15 +307,29 @@
    same grid as the product-photo cards at a matching size, per request to
    make all dashboard cards a consistent large size. */
 .icon-badge.big {
-  width: 100%; height: 140px; border-radius: 14px;
+  width: 100%; height: 176px; border-radius: 14px;
   padding: 6px; background: var(--card-2);
   align-self: stretch;
 }
-.icon-badge.big svg { width: 64px; height: 64px; stroke-width: 1.8; }
+.icon-badge.big svg { width: 56px; height: 56px; stroke-width: 1.8; }
 .icon-badge.big.flat-icon { background: #EAF4FD; padding: 16px; }
 .icon-badge.big.flat-icon svg { width: 100%; height: 100%; }
+/* Colour tints for plain-icon dashboard tiles (Shops, Search Keys, ...) so
+   the shortcut grid reads as a set of distinct, colourful destinations
+   instead of one repeated gold tone - mirrors the jewel-tone icon badges
+   used on the Register Shop / Login sectioned-card forms. */
+.icon-badge.big.tint-purple { background: var(--purple); color: #fff; }
+.icon-badge.big.tint-pink { background: var(--pink); color: #fff; }
+.icon-badge.big.tint-blue { background: var(--blue); color: #fff; }
+.icon-badge.big.tint-orange { background: var(--orange); color: #fff; }
+.icon-badge.big.tint-teal { background: var(--teal); color: #fff; }
+.icon-badge.big.tint-skyblue { background: var(--skyblue); color: #fff; }
+.icon-badge.big.tint-rose { background: var(--rose); color: #fff; }
+.icon-badge.big.tint-jgreen { background: var(--jgreen); color: #fff; }
+.icon-badge.big.tint-maroon { background: linear-gradient(135deg, var(--maroon), var(--maroon-dark)); color: #fff; }
 @media (max-width: 640px) {
-  .icon-badge.big { height: 110px; }
+  .icon-badge.big { height: 142px; }
+  .icon-badge.big svg { width: 44px; height: 44px; }
 }
 /* Compact variant - used by full-width dashboard shortcut cards (Customer
    Config, Customer Support) that need a noticeably smaller height than the
@@ -378,7 +428,7 @@
 }
 .kee-table tbody td { padding: 16px 24px; font-size: 13.5px; color: var(--text-1); border-bottom: 1px solid var(--border); font-weight: 600; }
 .kee-table tbody tr { transition: background .18s ease; }
-.kee-table tbody tr:hover { background: rgba(79, 70, 229, 0.045); }
+.kee-table tbody tr:hover { background: rgba(200, 148, 22, 0.045); }
 .kee-table tbody tr:last-child td { border-bottom: none; }
 .cell-primary { color: var(--text-0); font-weight: 800; font-family: var(--display); font-size: 14px; }
 .cell-sub { color: var(--text-3); font-size: 12px; margin-top: 2px; font-weight: 600; }
@@ -427,7 +477,7 @@
   display: flex; align-items: center; justify-content: center;
   color: var(--text-2); transition: all .18s ease;
 }
-.icon-btn:hover { color: var(--gold); border-color: rgba(79, 70, 229, 0.4); background: var(--gold-dim); }
+.icon-btn:hover { color: var(--gold); border-color: rgba(200, 148, 22, 0.4); background: var(--gold-dim); }
 .icon-btn svg { width: 15px; height: 15px; }
 
 /* Global header "search by" dropdown - a custom icon+label trigger/menu
@@ -441,7 +491,7 @@
   color: var(--text-2); font-size: 12.5px; font-weight: 700;
   white-space: nowrap; flex-shrink: 0; transition: all .18s ease;
 }
-.search-type-trigger:hover { border-color: rgba(79, 70, 229, 0.4); color: var(--text-0); }
+.search-type-trigger:hover { border-color: rgba(200, 148, 22, 0.4); color: var(--text-0); }
 .search-type-trigger svg { flex-shrink: 0; color: var(--text-3); }
 .search-type-backdrop { position: fixed; inset: 0; z-index: 998; background: transparent; }
 .search-type-menu {
@@ -527,6 +577,60 @@
 .forgot-link { color: var(--gold); font-size: 12.5px; font-weight: 800; }
 .forgot-link:hover { text-decoration: underline; }
 
+/* ===================== "Sectioned Cards" form pattern (Register Shop, v2 mockup) =====================
+   Numbered, colorfully-iconed field groups used by the shop self-registration
+   wizard. Reads the same --maroon/--gold tokens as the rest of .login-shell
+   so it automatically follows the brand palette; only needs its own accent
+   colors for the per-field icon badges. */
+.reg-section {
+  background: var(--card); border: 1px solid var(--border-2); border-radius: 18px;
+  padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 14px 30px -22px rgba(30, 27, 23, 0.18);
+}
+.reg-section-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 11px;
+  border-bottom: 1px dashed var(--border-2);
+}
+.reg-section-head .reg-num {
+  width: 25px; height: 25px; border-radius: 8px; background: var(--maroon); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-family: var(--display);
+  font-weight: 800; font-size: 12px; flex-shrink: 0;
+}
+.reg-section-head h3 { font-size: 14px; color: var(--text-0); font-family: var(--display); font-weight: 800; margin: 0; }
+.reg-field { margin-bottom: 13px; }
+.reg-field:last-child { margin-bottom: 0; }
+.reg-field-label { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.reg-ico {
+  width: 27px; height: 27px; border-radius: 9px; display: flex; align-items: center;
+  justify-content: center; color: #fff; flex-shrink: 0;
+}
+.reg-ico svg { width: 13px; height: 13px; }
+.reg-field-label b { font-size: 12.5px; color: var(--text-0); font-weight: 700; font-family: var(--sans); }
+.reg-field-label .req { color: var(--maroon); }
+.reg-field-label .reg-trailing {
+  margin-left: auto; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;
+  background: none; border: none; padding: 0; font-size: 10px; color: var(--gold); font-weight: 800;
+}
+/* Larger, easier-to-tap variant used for GPS "Current Location" triggers -
+   the default .reg-trailing is a bare text link sized for secondary actions
+   like "Upload", which was too small/hard to hit reliably for a primary
+   action like capturing GPS location. */
+.reg-field-label .reg-trailing.loc-btn {
+  gap: 6px; padding: 7px 12px; font-size: 12px; border-radius: 999px;
+  background: var(--gold-dim); border: 1.5px solid rgba(200, 148, 22, 0.28);
+  min-height: 30px;
+}
+.reg-field-label .reg-trailing.loc-btn svg { width: 14px !important; height: 14px !important; }
+.reg-field-label .reg-trailing.loc-btn:active { background: var(--gold-dim-2, var(--gold-dim)); transform: scale(0.97); }
+.reg-field .input-wrap input, .reg-field .input-wrap select { padding-left: 15px; }
+.reg-field .input-wrap > svg { display: none; }
+.reg-field .input-wrap input, .reg-field .input-wrap select { background: var(--card-2); }
+.reg-otp-btn {
+  background: var(--gold); color: var(--maroon-dark); border: none; border-radius: 10px;
+  padding: 0 14px; font-weight: 800; font-size: 11.5px; font-family: var(--display);
+  white-space: nowrap; flex-shrink: 0;
+}
+.reg-submit-btn { width: 100%; justify-content: center; border-radius: 14px; padding: 15px; font-size: 14.5px; }
+
 .login-divider { display: flex; align-items: center; gap: 12px; margin: 26px 0; color: var(--text-3); font-size: 12px; font-weight: 700; }
 .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-2); }
 .login-foot { text-align: center; font-size: 13px; color: var(--text-2); margin-top: 22px; font-weight: 600; }
@@ -579,15 +683,15 @@
    DashboardView) has a single card grid with nothing below it, so the old
    28px bottom margin (meant to separate stacked sections) just left dead
    space at the end of the page. */
-.dash-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 8px; }
+.dash-card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 4px; }
 /* Full-width dashboard cards (Customer Config, Customer Support) span both
    grid columns so they stretch the entire dashboard width instead of sitting
    in a single half-width cell. */
 .dash-card-full { grid-column: 1 / -1; }
 .dash-card {
-  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 5px;
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 18px; padding: 18px;
+  border-radius: 16px; padding: 8px;
   box-shadow: 0 20px 40px rgba(30, 41, 59, 0.1), 0 2px 6px rgba(30, 41, 59, 0.06);
   transition: transform .2s ease, border-color .2s ease, background .2s ease;
   opacity: 0; transform: translateY(16px);
@@ -596,8 +700,8 @@
   width: 100%;
 }
 .dash-card:hover { transform: translateY(-3px); border-color: rgba(240, 185, 11, 0.4); background: #f4f6fb; }
-.dash-card-title { font-family: var(--display); font-weight: 800; color: var(--text-0); font-size: 14.5px; line-height: 1.25; width: 100%; }
-.dash-card-desc { font-size: 12.5px; color: var(--text-2); font-weight: 600; line-height: 1.4; width: 100%; }
+.dash-card-title { font-family: var(--display); font-weight: 800; color: var(--text-0); font-size: 13px; line-height: 1.2; width: 100%; }
+.dash-card-desc { font-size: 10.5px; color: var(--text-2); font-weight: 600; line-height: 1.3; width: 100%; }
 
 /* quick actions */
 .quick-actions { display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }
@@ -608,7 +712,7 @@
   border-radius: 18px; padding: 18px;
   transition: transform .2s ease, border-color .2s ease, background .2s ease;
 }
-.qa-btn:hover { transform: translateY(-3px); border-color: rgba(79, 70, 229, 0.35); background: #f4f6fb; }
+.qa-btn:hover { transform: translateY(-3px); border-color: rgba(200, 148, 22, 0.35); background: #f4f6fb; }
 .qa-btn .icon-badge { background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; }
 .qa-btn span { font-family: var(--display); font-weight: 700; color: var(--text-0); font-size: 14.5px; }
 .qa-btn small { display: block; color: var(--text-2); font-size: 11.5px; font-weight: 600; margin-top: 2px; }
@@ -707,7 +811,7 @@ select.sel:focus { border-color: var(--gold); }
 @media (max-width: 560px) { .product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
 
 .product-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform .2s ease, border-color .2s ease; }
-.product-card:hover { transform: translateY(-3px); border-color: rgba(79, 70, 229, 0.3); }
+.product-card:hover { transform: translateY(-3px); border-color: rgba(200, 148, 22, 0.3); }
 .product-img {
   height: 130px;
   background: repeating-linear-gradient(135deg, #eef1f7, #eef1f7 10px, #e4e8f2 10px, #e4e8f2 20px);
@@ -717,14 +821,14 @@ select.sel:focus { border-color: var(--gold); }
 .product-tag {
   position: absolute; top: 10px; left: 10px;
   background: rgba(30, 41, 59, 0.72); color: #ffffff; font-size: 10px; font-weight: 800;
-  padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(79, 70, 229, 0.3);
+  padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(200, 148, 22, 0.3);
 }
 .product-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .product-body .pname { font-family: var(--display); font-weight: 700; color: var(--text-0); font-size: 14px; }
 .product-body .pcat { font-size: 11px; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .product-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
 .price { font-family: var(--display); font-weight: 800; color: var(--gold); font-size: 16px; }
-.add-btn { width: 36px; height: 36px; border-radius: 11px; background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; transition: transform .15s ease, filter .15s ease; box-shadow: 0 8px 16px rgba(79, 70, 229, 0.28); }
+.add-btn { width: 36px; height: 36px; border-radius: 11px; background: linear-gradient(135deg, var(--gold), var(--gold-2)); color: #ffffff; border: none; display: flex; align-items: center; justify-content: center; transition: transform .15s ease, filter .15s ease; box-shadow: 0 8px 16px rgba(200, 148, 22, 0.28); }
 .add-btn:hover { transform: scale(1.08); filter: brightness(1.08); }
 .add-btn svg { width: 17px; height: 17px; stroke-width: 2.6; }
 
@@ -747,29 +851,29 @@ select.sel:focus { border-color: var(--gold); }
 .glass-panel-hover { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
 .glass-panel-hover:hover {
   background: #f4f6fb;
-  border-color: rgba(79, 70, 229, 0.35);
-  box-shadow: 0 10px 30px -10px rgba(79, 70, 229, 0.2);
+  border-color: rgba(200, 148, 22, 0.35);
+  box-shadow: 0 10px 30px -10px rgba(200, 148, 22, 0.2);
   transform: translateY(-2px);
 }
 .glass-input { background: #f4f6fb; border: 1px solid rgba(30, 41, 59, 0.12); transition: all 0.2s ease-in-out; }
 .glass-input:focus {
   background: #eef0fb;
-  border-color: rgba(79, 70, 229, 0.6);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25);
+  border-color: rgba(200, 148, 22, 0.6);
+  box-shadow: 0 0 0 2px rgba(200, 148, 22, 0.25);
   outline: none;
 }
 .glass-button-primary {
   background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #ffffff; font-weight: 700; border-radius: 9999px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.glass-button-primary:hover:not(:disabled) { filter: brightness(1.06); box-shadow: 0 0 20px 2px rgba(79, 70, 229, 0.35); transform: scale(1.02); }
+.glass-button-primary:hover:not(:disabled) { filter: brightness(1.06); box-shadow: 0 0 20px 2px rgba(200, 148, 22, 0.35); transform: scale(1.02); }
 .glass-button-primary:active:not(:disabled) { transform: scale(0.98); }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: rgba(233, 237, 245, 0.6); }
 ::-webkit-scrollbar-thumb { background: #c7cbe3; border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(79, 70, 229, 0.5); }
+::-webkit-scrollbar-thumb:hover { background: rgba(200, 148, 22, 0.5); }
 
 .mesh-gradient-bg {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: -10;
@@ -777,8 +881,8 @@ select.sel:focus { border-color: var(--gold); }
   overflow: hidden;
 }
 .glow-sphere { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.12; z-index: -9; }
-.glow-purple { width: 400px; height: 400px; background: rgba(124, 58, 237, 0.22); top: -100px; left: -100px; animation: float 20s infinite alternate; }
-.glow-blue { width: 500px; height: 500px; background: rgba(79, 70, 229, 0.1); bottom: -200px; right: -100px; animation: float 25s infinite alternate-reverse; }
+.glow-purple { width: 400px; height: 400px; background: rgba(245, 184, 0, 0.22); top: -100px; left: -100px; animation: float 20s infinite alternate; }
+.glow-blue { width: 500px; height: 500px; background: rgba(200, 148, 22, 0.1); bottom: -200px; right: -100px; animation: float 25s infinite alternate-reverse; }
 
 @keyframes float {
   0% { transform: translate(0, 0) scale(1); }
@@ -836,6 +940,14 @@ select.sel:focus { border-color: var(--gold); }
   --maroon: #7A1220;
   --maroon-dark: #5A0D18;
   --black: #1E1B17;
+  --purple: #7C4DFF;
+  --pink: #F0468B;
+  --blue: #2F80ED;
+  --orange: #F2994A;
+  --green: #27AE60;
+  --teal: #12B8B0;
+  --skyblue: #2D9CDB;
+  --rose: #EB5757;
   background: var(--bg-0);
 }
 
@@ -1175,10 +1287,10 @@ select.sel:focus { border-color: var(--gold); }
   .qa-btn small { font-size: 11px; }
 
   /* dashboard info cards (product shortcuts, quick actions, etc.) */
-  .dash-card-grid { gap: 10px; margin-bottom: 18px; }
-  .dash-card { padding: 14px; border-radius: 14px; gap: 8px; }
-  .dash-card-title { font-size: 13px; }
-  .dash-card-desc { font-size: 11.5px; }
+  .dash-card-grid { gap: 8px; margin-bottom: 4px; }
+  .dash-card { padding: 8px; border-radius: 14px; gap: 4px; }
+  .dash-card-title { font-size: 12px; }
+  .dash-card-desc { font-size: 10px; }
 
   /* feed / lists */
   .feed-item, .cust-item { padding: 10px 2px; }

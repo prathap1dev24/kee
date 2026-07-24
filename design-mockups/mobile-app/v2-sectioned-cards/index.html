@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Key Shops Mobile — v2 Sectioned Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --maroon:#7A1220; --maroon-dark:#5A0D18; --gold:#C89416; --gold-2:#F5B800;
+    --bg:#FAF6EE; --card:#ffffff; --card-2:#FBF2DA; --line:#E7E1D2;
+    --text-1:#221D16; --text-2:#736553; --text-3:#8A7A63;
+    --purple:#7C4DFF; --pink:#F0468B; --blue:#2F80ED; --orange:#F2994A;
+    --green:#27AE60; --teal:#12B8B0; --skyblue:#2D9CDB; --rose:#EB5757;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; background:#EDE7DA; font-family:'Inter',sans-serif; padding:48px 20px;}
+  h1,h2,h3{font-family:'Outfit',sans-serif; margin:0;}
+  .phone{width:390px; height:844px; border-radius:48px; background:#151210; padding:14px; box-shadow:0 50px 90px -25px rgba(0,0,0,.5);}
+  .screen{width:100%; height:100%; border-radius:36px; overflow:hidden; background:var(--bg); display:flex; flex-direction:column; position:relative;}
+  .statusbar{flex-shrink:0; height:30px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-size:12px; font-weight:700; color:var(--text-1);}
+  .content{flex:1; overflow-y:auto; scrollbar-width:none; padding:6px 16px 18px;}
+  .content::-webkit-scrollbar{display:none;}
+
+  .brand-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 4px 16px;}
+  .brand{display:flex; align-items:center; gap:8px;}
+  .brand img{height:32px;}
+  .brand span{color:var(--maroon); font-family:'Outfit'; font-weight:800; font-size:17px;}
+  .loc-pill{display:flex; align-items:center; gap:6px; background:var(--card-2); color:var(--maroon); padding:7px 12px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid var(--line);}
+  .loc-pill svg{width:14px; height:14px;}
+
+  .section{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px; margin-bottom:16px; box-shadow:0 14px 30px -20px rgba(30,27,23,.18);}
+  .section-head{display:flex; align-items:center; gap:10px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px dashed var(--line);}
+  .section-head .num{width:26px; height:26px; border-radius:8px; background:var(--maroon); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Outfit'; font-weight:800; font-size:12.5px;}
+  .section-head h3{font-size:14.5px; color:var(--text-1);}
+
+  .field{margin-bottom:14px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{display:flex; align-items:center; gap:8px; margin-bottom:7px;}
+  .ico{width:28px; height:28px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0;}
+  .ico svg{width:14px; height:14px;}
+  .field-label b{font-size:12.5px; color:var(--text-1); font-weight:700;}
+  .field-label .req{color:var(--maroon);}
+  .input{background:var(--card-2); border:1px solid var(--line); border-radius:10px; padding:11px 13px; font-size:13px; color:var(--text-2); margin-left:36px;}
+  .row2{display:flex; gap:10px;}
+  .row2 .field{flex:1;}
+  .mobile-row{display:flex; gap:8px; align-items:stretch; margin-left:36px;}
+  .mobile-row .input{margin-left:0; flex:1;}
+  .otp-btn{background:var(--gold); color:var(--maroon-dark); border:none; border-radius:10px; padding:0 14px; font-weight:800; font-size:11.5px; font-family:'Outfit'; white-space:nowrap;}
+
+  .terms{display:flex; align-items:center; justify-content:space-between; margin:4px 0 16px; padding:0 4px;}
+  .terms label{display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--text-2);}
+  .terms input{width:16px; height:16px; accent-color:var(--maroon);}
+  .terms a{color:var(--gold); font-weight:800; font-size:12px;}
+  .pay-btn{width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:var(--maroon); color:#fff; border:none; border-radius:14px; padding:15px; font-family:'Outfit'; font-weight:800; font-size:15px; box-shadow:0 14px 26px -10px rgba(122,18,32,.4);}
+
+  .bottomnav{flex-shrink:0; display:flex; justify-content:space-around; align-items:center; padding:10px 6px 14px; background:var(--card); border-top:1px solid var(--line);}
+  .nav-item{display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-3); font-size:10px; font-weight:700;}
+  .nav-item svg{width:19px; height:19px;}
+  .nav-item.active{color:var(--maroon);}
+</style>
+</head>
+<body>
+<div class="phone"><div class="screen">
+  <div class="statusbar"><span>1:48</span><span></span><span>59%</span></div>
+  <div class="content">
+    <div class="brand-row">
+      <div class="brand"><img src="../../assets/keyshop-logo.png" alt="Key Shop"><span>Key Shops</span></div>
+      <div class="loc-pill"><i data-lucide="map-pin"></i> TN</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="num">1</div><h3>Personal Details</h3></div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--purple)"><i data-lucide="user"></i></div><b>Name <span class="req">*</span></b></div>
+        <div class="input">Enter Full Name</div>
+      </div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--gold)"><i data-lucide="credit-card"></i></div><b>Aadhar Number</b></div>
+        <div class="input">Enter Aadhar Number</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="num">2</div><h3>Shop Details</h3></div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--pink)"><i data-lucide="store"></i></div><b>Shop Name <span class="req">*</span></b></div>
+        <div class="input">Enter Shop Name</div>
+      </div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--blue)"><i data-lucide="map-pin"></i></div><b>Shop Address <span class="req">*</span></b></div>
+        <div class="input">Enter Shop Address</div>
+      </div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--orange)"><i data-lucide="building-2"></i></div><b>City <span class="req">*</span></b></div>
+        <div class="input">Enter City</div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <div class="field-label"><div class="ico" style="background:var(--green)"><i data-lucide="map"></i></div><b>State <span class="req">*</span></b></div>
+          <div class="input">Select State</div>
+        </div>
+        <div class="field">
+          <div class="field-label"><div class="ico" style="background:var(--teal)"><i data-lucide="shield-check"></i></div><b>PIN Code <span class="req">*</span></b></div>
+          <div class="input">Enter PIN</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="num">3</div><h3>Verification</h3></div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--skyblue)"><i data-lucide="phone"></i></div><b>Mobile Number <span class="req">*</span></b></div>
+        <div class="mobile-row"><div class="input" style="margin:0;">Enter Mobile Number</div><button class="otp-btn">Get OTP</button></div>
+      </div>
+      <div class="field">
+        <div class="field-label"><div class="ico" style="background:var(--rose)"><i data-lucide="users"></i></div><b>Refer Code (Optional)</b></div>
+        <div class="input">Enter Refer Code</div>
+      </div>
+    </div>
+
+    <div class="terms">
+      <label><input type="checkbox"> I Accepted Terms &amp; Conditions</label>
+      <a href="#">View</a>
+    </div>
+    <button class="pay-btn"><i data-lucide="lock" style="width:17px;height:17px"></i> Payment Gateway</button>
+  </div>
+  <div class="bottomnav">
+    <div class="nav-item active"><i data-lucide="home"></i>Home</div>
+    <div class="nav-item"><i data-lucide="user-cog"></i>Account</div>
+    <div class="nav-item"><i data-lucide="globe"></i>Language</div>
+    <div class="nav-item"><i data-lucide="headset"></i>Support</div>
+  </div>
+</div></div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

@@ -87,6 +87,20 @@ export class CustomerService {
         },
       });
 
+      // Surface the registration in the Shop Admin's Notifications feed (see
+      // NotificationService for the read side). Scoped to this shop only
+      // (shopId set, audience 'SHOP') - mirrors the SHOP_REGISTRATION
+      // notification auth.service.ts creates for Super Admin on shop signup.
+      await tx.notification.create({
+        data: {
+          title: 'New Customer Registered',
+          message: `Customer "${created.name}" (Key: ${created.keyNumber}) has been registered.`,
+          type: 'CUSTOMER_REGISTRATION',
+          shopId,
+          audience: 'SHOP',
+        },
+      });
+
       return created;
     });
 

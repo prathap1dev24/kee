@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Key Shops — Search Keys Card: Custom Icon Styles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --maroon:#7A1220; --maroon-dark:#5A0D18; --gold:#C89416; --gold-2:#F5B800;
+    --bg:#FAF6EE; --card:#ffffff; --card-2:#FBF2DA; --line:#E7E1D2;
+    --text-1:#221D16; --text-2:#736553; --text-3:#8A7A63;
+    --teal:#12B8B0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; min-height:100vh; background:#EDE7DA; font-family:'Inter',sans-serif; padding:40px 20px;}
+  h1,h2,h3{font-family:'Outfit',sans-serif; margin:0;}
+  .wrap{max-width:920px; margin:0 auto;}
+  .hdr{margin-bottom:28px;}
+  .hdr h1{font-size:22px; color:var(--maroon); margin-bottom:6px;}
+  .hdr p{font-size:13.5px; color:var(--text-2); font-weight:600;}
+  .grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:16px;}
+  @media (max-width:900px){ .grid{grid-template-columns:repeat(3, 1fr);} }
+  @media (max-width:600px){ .grid{grid-template-columns:repeat(2, 1fr);} }
+
+  .opt{position:relative;}
+  .num-badge{position:absolute; top:-10px; left:-10px; width:26px; height:26px; border-radius:8px; background:var(--maroon); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Outfit'; font-weight:800; font-size:12.5px; box-shadow:0 6px 14px rgba(122,18,32,.35); z-index:2;}
+  .dash-card{
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:5px;
+    background:var(--card); border:1px solid var(--line);
+    border-radius:16px; padding:10px;
+    box-shadow:0 20px 40px rgba(30,41,59,0.1), 0 2px 6px rgba(30,41,59,0.06);
+  }
+  .icon-badge{
+    width:100%; height:110px; border-radius:14px;
+    background:var(--card-2); display:flex; align-items:center; justify-content:center;
+  }
+  .icon-badge svg{width:60px; height:60px;}
+  .dash-card-title{font-family:'Outfit'; font-weight:800; color:var(--text-1); font-size:12.5px;}
+  .dash-card-desc{font-size:10px; color:var(--text-2); font-weight:600;}
+  .icon-name{margin-top:6px; text-align:center; font-size:10.5px; color:var(--text-3); font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>Search Keys — Custom Illustrated Icon Styles</h1>
+    <p>5 hand-drawn, two-tone (maroon/gold) icon concepts in the style you referenced — magnifying glass + key combos — sized as they'd appear on the real card.</p>
+  </div>
+  <div class="grid">
+
+    <!-- 1: Key inside magnifier lens -->
+    <div class="opt">
+      <div class="num-badge">1</div>
+      <div class="dash-card">
+        <div class="icon-badge">
+          <svg viewBox="0 0 64 64" fill="none">
+            <circle cx="26" cy="26" r="19" fill="#fff" stroke="var(--maroon)" stroke-width="3.5"/>
+            <line x1="39.5" y1="39.5" x2="54" y2="54" stroke="var(--maroon)" stroke-width="5" stroke-linecap="round"/>
+            <g transform="translate(26,26) rotate(-40)">
+              <circle cx="-9" cy="0" r="6" fill="none" stroke="var(--gold)" stroke-width="3"/>
+              <line x1="-3" y1="0" x2="11" y2="0" stroke="var(--gold)" stroke-width="3" stroke-linecap="round"/>
+              <line x1="7" y1="0" x2="7" y2="5" stroke="var(--gold)" stroke-width="3" stroke-linecap="round"/>
+              <line x1="11" y1="0" x2="11" y2="5" stroke="var(--gold)" stroke-width="3" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </div>
+        <div class="dash-card-title">Search Keys</div>
+        <div class="dash-card-desc">Find and digitize key records quickly</div>
+      </div>
+      <div class="icon-name">Key-in-Magnifier</div>
+    </div>
+
+    <!-- 2: Key shaft doubles as magnifier handle -->
+    <div class="opt">
+      <div class="num-badge">2</div>
+      <div class="dash-card">
+        <div class="icon-badge">
+          <svg viewBox="0 0 64 64" fill="none">
+            <circle cx="24" cy="24" r="16" fill="#FDF0CE" stroke="var(--gold)" stroke-width="4"/>
+            <circle cx="24" cy="24" r="6" fill="none" stroke="var(--maroon)" stroke-width="3"/>
+            <line x1="35" y1="35" x2="55" y2="55" stroke="var(--maroon)" stroke-width="5" stroke-linecap="round"/>
+            <line x1="48" y1="48" x2="53" y2="43" stroke="var(--maroon)" stroke-width="4" stroke-linecap="round"/>
+            <line x1="52" y1="52" x2="57" y2="47" stroke="var(--maroon)" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="dash-card-title">Search Keys</div>
+        <div class="dash-card-desc">Find and digitize key records quickly</div>
+      </div>
+      <div class="icon-name">Key-as-Magnifier</div>
+    </div>
+
+    <!-- 3: Browser window + key + magnifier (closest to reference) -->
+    <div class="opt">
+      <div class="num-badge">3</div>
+      <div class="dash-card">
+        <div class="icon-badge">
+          <svg viewBox="0 0 64 64" fill="none">
+            <rect x="6" y="8" width="52" height="40" rx="7" fill="#fff" stroke="var(--maroon)" stroke-width="3"/>
+            <rect x="6" y="8" width="52" height="12" rx="7" fill="var(--maroon)"/>
+            <circle cx="14" cy="14" r="1.6" fill="#fff"/><circle cx="19" cy="14" r="1.6" fill="#fff"/><circle cx="24" cy="14" r="1.6" fill="#fff"/>
+            <rect x="38" y="28" width="12" height="9" rx="2" fill="none" stroke="var(--gold)" stroke-width="2"/>
+            <line x1="38" y1="42" x2="52" y2="42" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"/>
+            <g transform="translate(24,32)">
+              <circle r="11" fill="#fff" stroke="var(--maroon)" stroke-width="3"/>
+              <line x1="8" y1="8" x2="17" y2="17" stroke="var(--maroon)" stroke-width="4" stroke-linecap="round"/>
+              <g transform="rotate(-40)">
+                <circle cx="-5" cy="0" r="3.6" fill="none" stroke="var(--gold)" stroke-width="2"/>
+                <line x1="-1.4" y1="0" x2="6" y2="0" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"/>
+                <line x1="4" y1="0" x2="4" y2="3" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div class="dash-card-title">Search Keys</div>
+        <div class="dash-card-desc">Find and digitize key records quickly</div>
+      </div>
+      <div class="icon-name">Browser + Key Search</div>
+    </div>
+
+    <!-- 4: Magnifier over a keyhole -->
+    <div class="opt">
+      <div class="num-badge">4</div>
+      <div class="dash-card">
+        <div class="icon-badge">
+          <svg viewBox="0 0 64 64" fill="none">
+            <circle cx="27" cy="27" r="19" fill="var(--maroon)" stroke="var(--maroon)" stroke-width="3.5"/>
+            <line x1="40.5" y1="40.5" x2="55" y2="55" stroke="var(--maroon)" stroke-width="5" stroke-linecap="round"/>
+            <g fill="var(--gold-2)">
+              <circle cx="27" cy="21" r="6.5"/>
+              <path d="M27 26 L33 38 L21 38 Z"/>
+            </g>
+          </svg>
+        </div>
+        <div class="dash-card-title">Search Keys</div>
+        <div class="dash-card-desc">Find and digitize key records quickly</div>
+      </div>
+      <div class="icon-name">Keyhole Search</div>
+    </div>
+
+    <!-- 5: Key with radar/scan arcs -->
+    <div class="opt">
+      <div class="num-badge">5</div>
+      <div class="dash-card">
+        <div class="icon-badge">
+          <svg viewBox="0 0 64 64" fill="none">
+            <g transform="translate(20,38) rotate(-45)">
+              <circle cx="0" cy="0" r="8" fill="#fff" stroke="var(--gold)" stroke-width="3.5"/>
+              <line x1="7" y1="0" x2="24" y2="0" stroke="var(--gold)" stroke-width="3.5" stroke-linecap="round"/>
+              <line x1="18" y1="0" x2="18" y2="6" stroke="var(--gold)" stroke-width="3.5" stroke-linecap="round"/>
+              <line x1="24" y1="0" x2="24" y2="6" stroke="var(--gold)" stroke-width="3.5" stroke-linecap="round"/>
+            </g>
+            <path d="M38 26 A14 14 0 0 1 44 14" stroke="var(--maroon)" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+            <path d="M42 32 A22 22 0 0 1 50 8" stroke="var(--maroon)" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+            <path d="M46 38 A30 30 0 0 1 56 2" stroke="var(--maroon)" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+          </svg>
+        </div>
+        <div class="dash-card-title">Search Keys</div>
+        <div class="dash-card-desc">Find and digitize key records quickly</div>
+      </div>
+      <div class="icon-name">Scan/Radar Key</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

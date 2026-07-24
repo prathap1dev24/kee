@@ -378,6 +378,10 @@ export class AuthService implements OnModuleInit {
             phone: dto.phone,
             whatsappNumber: dto.whatsappNumber || '',
           }),
+          // GPS coordinates from the wizard's "Current Location" button, when
+          // the shop owner granted location permission (see RegisterShopDto).
+          latitude: dto.latitude ?? null,
+          longitude: dto.longitude ?? null,
         },
       });
 

@@ -59,7 +59,15 @@ export class GeoController {
       street: streetParts.join(' '),
       locality: addr.suburb || addr.neighbourhood || addr.village || '',
       city: addr.city || addr.town || addr.county || '',
-      district: addr.city_district || addr.county || '',
+      // For Indian addresses, Nominatim's `state_district` field is the one
+      // that actually corresponds to the administrative "district" (e.g.
+      // "Chennai", "Coimbatore") - `city_district` is a locality/zone
+      // *within* a city (not a district) and `county` is often absent or
+      // uses a different naming convention entirely. Using city_district/
+      // county first (as this used to) meant `district` was frequently
+      // empty or wrong, which is what silently fed an incorrect value into
+      // the "Current Location" district auto-fill on the client.
+      district: addr.state_district || addr.city_district || addr.county || '',
       state: addr.state || '',
       postcode: addr.postcode || '',
       country: addr.country || '',

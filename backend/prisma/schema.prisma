@@ -69,6 +69,14 @@ model Shop {
   isActive       Boolean @default(true)
   storageUsed    BigInt  @default(0) // bytes
 
+  // GPS coordinates captured via the "Current Location" button on the public
+  // self-registration wizard's Shop Details step (see captureShopLocation in
+  // App.jsx). Nullable/optional: a shop owner can type the address manually
+  // without granting location permission, and pre-existing shops created
+  // before this field existed have neither value.
+  latitude  Float?
+  longitude Float?
+
   users         User[]
   subscriptions Subscription[]
   customers     Customer[]

@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, IsOptional, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, MinLength, Matches, IsNumber } from 'class-validator';
 import { PHONE_REGEX, PHONE_REGEX_MESSAGE } from '../../common/validators/phone';
 
 export class LoginDto {
@@ -112,6 +112,17 @@ export class RegisterShopDto {
   @IsString()
   @IsNotEmpty()
   location: string;
+
+  // Captured alongside `location` by the "Current Location" GPS button (see
+  // captureShopLocation in App.jsx) - optional since a shop owner can type
+  // the address manually instead of using GPS.
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
 
   @IsOptional()
   @IsString()

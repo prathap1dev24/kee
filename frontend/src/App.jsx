@@ -18,7 +18,7 @@ import {
   Tag, Package, Boxes, Percent, Image as ImageIcon, Megaphone, BadgePercent,
   Receipt, CalendarRange, Banknote, PlayCircle, MessageCircle, LifeBuoy,
   Download, Fingerprint, Palette, Menu, Home, Languages,
-  Wrench, Cpu, Gauge, ScanLine
+  Wrench, Cpu, Gauge, ScanLine, Headset
 } from 'lucide-react';
 
 // Product photos shown on the Dashboard's product-type cards instead of the
@@ -1134,6 +1134,12 @@ export default function App() {
   const [regWhatsapp, setRegWhatsapp] = useState('');
   const [sameAsPhone, setSameAsPhone] = useState(false);
   const [regLocation, setRegLocation] = useState('');
+  // Raw GPS coordinates from captureShopLocation, kept alongside the
+  // free-text `regLocation` address so they can be sent to the backend and
+  // shown to the shop owner - previously captured only to build the address
+  // string, then silently discarded (never stored or displayed).
+  const [regLat, setRegLat] = useState(null);
+  const [regLng, setRegLng] = useState(null);
   const [regLocLoading, setRegLocLoading] = useState(false);
   const [regLocError, setRegLocError] = useState('');
   const [regLocErrorKind, setRegLocErrorKind] = useState('');
@@ -1338,6 +1344,8 @@ export default function App() {
       setRegLocLoading(false);
       return;
     }
+    setRegLat(lat);
+    setRegLng(lng);
     const data = await reverseGeocode(lat, lng);
     if (data) {
       const parts = [data.street, data.locality, data.city, data.state].filter(Boolean);
@@ -1376,6 +1384,8 @@ export default function App() {
         plan: regPlan,
         whatsappNumber: regWhatsapp,
         location: regLocation,
+        latitude: regLat ?? undefined,
+        longitude: regLng ?? undefined,
         shopPhoto: regShopPhoto,
         shopLicense: regShopLicense,
         ownerAadhaar: regOwnerAadhaar
@@ -1511,32 +1521,33 @@ export default function App() {
               )}
 
               <form onSubmit={handleLoginSubmit}>
-                <div className="field">
-                  <label>Email address</label>
-                  <div className="input-wrap">
-                    <Mail />
-                    <input
-                      type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)}
-                      placeholder="admin@keyshop.com or shop@keyshop.com"
-                    />
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">1</div><h3>Sign In Details</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Mail /></div><b>Email Address <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input
+                        type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)}
+                        placeholder="admin@keyshop.com or shop@keyshop.com"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="field">
-                  <label>Password</label>
-                  <div className="input-wrap">
-                    <Lock />
-                    <input
-                      type={showAuthPassword ? "text" : "password"} required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)}
-                      placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" style={{ paddingRight: 42 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAuthPassword(!showAuthPassword)}
-                      className="pwd-toggle-btn"
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
-                    >
-                      {showAuthPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Lock /></div><b>Password <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input
+                        type={showAuthPassword ? "text" : "password"} required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)}
+                        placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" style={{ paddingRight: 42 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAuthPassword(!showAuthPassword)}
+                        className="pwd-toggle-btn"
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                      >
+                        {showAuthPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className="field-row">
@@ -1638,7 +1649,7 @@ export default function App() {
                         className="qa-btn"
                         style={{ flexDirection: 'column', textAlign: 'center', gap: 10, minWidth: 0 }}
                       >
-                        <span className="icon-badge"><Mail /></span>
+                        <span className="icon-badge blue"><Mail /></span>
                         <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em' }}>Email OTP</span>
                       </button>
                       <button
@@ -1646,7 +1657,7 @@ export default function App() {
                         className="qa-btn"
                         style={{ flexDirection: 'column', textAlign: 'center', gap: 10, minWidth: 0 }}
                       >
-                        <span className="icon-badge"><Phone /></span>
+                        <span className="icon-badge teal"><Phone /></span>
                         <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.03em' }}>Phone OTP</span>
                       </button>
                     </div>
@@ -1663,10 +1674,9 @@ export default function App() {
                     <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>
                       Enter the registered {resetMethod} associated with your workspace to request a reset code.
                     </p>
-                    <div className="field">
-                      <label>{resetMethod === 'email' ? 'Registered email' : 'Registered phone number'}</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: resetMethod === 'email' ? 'var(--blue)' : 'var(--teal)' }}>{resetMethod === 'email' ? <Mail /> : <Phone />}</div><b>{resetMethod === 'email' ? 'Registered Email' : 'Registered Phone Number'} <span className="req">*</span></b></div>
                       <div className="input-wrap">
-                        {resetMethod === 'email' ? <Mail /> : <Phone />}
                         <input
                           type={resetMethod === 'email' ? 'email' : 'text'}
                           required
@@ -1740,10 +1750,9 @@ export default function App() {
                     <p style={{ color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, textAlign: 'center', marginBottom: 16 }}>
                       OTP verified. Please set a new password below.
                     </p>
-                    <div className="field">
-                      <label>New password</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Lock /></div><b>New Password <span className="req">*</span></b></div>
                       <div className="input-wrap">
-                        <Lock />
                         <input
                           type="password"
                           required
@@ -1753,10 +1762,9 @@ export default function App() {
                         />
                       </div>
                     </div>
-                    <div className="field">
-                      <label>Confirm password</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><Lock /></div><b>Confirm Password <span className="req">*</span></b></div>
                       <div className="input-wrap">
-                        <Lock />
                         <input
                           type="password"
                           required
@@ -1840,101 +1848,68 @@ export default function App() {
               </div>
             )}
 
-            {/* STEP 1: Info */}
+            {/* STEP 1: Info — "Sectioned Cards" layout (design-mockups/mobile-app/v2-sectioned-cards) */}
             {regStep === 1 && (
               <div>
-                <div className="field">
-                  <label>Shop name / business name</label>
-                  <div className="input-wrap">
-                    <Building2 />
-                    <input
-                      type="text" required value={regShopName} onChange={(e) => setRegShopName(e.target.value)}
-                      placeholder="e.g. Metro Duplicate Keys"
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>Owner name</label>
-                  <div className="input-wrap">
-                    <UserCheck />
-                    <input
-                      type="text" required value={regOwnerName} onChange={(e) => setRegOwnerName(e.target.value)}
-                      placeholder="e.g. Rajesh Kumar"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-grid">
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Email address</label>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">1</div><h3>Personal Details</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><UserCheck /></div><b>Owner Name <span className="req">*</span></b></div>
                     <div className="input-wrap">
-                      <Mail />
+                      <input
+                        type="text" required value={regOwnerName} onChange={(e) => setRegOwnerName(e.target.value)}
+                        placeholder="e.g. Rajesh Kumar"
+                      />
+                    </div>
+                  </div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Mail /></div><b>Email Address <span className="req">*</span></b></div>
+                    <div className="input-wrap">
                       <input
                         type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)}
                         placeholder="shop@example.com"
                       />
                     </div>
                   </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Phone number</label>
-                    <div className="input-wrap">
-                      <Phone />
-                      <input
-                        type="tel" required value={regPhone} onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="10-digit mobile"
-                      />
-                    </div>
-                  </div>
                 </div>
 
-                <div className="form-grid" style={{ marginTop: 18 }}>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <div className="flex justify-between items-center mb-2">
-                      <label style={{ marginBottom: 0 }}>WhatsApp number</label>
-                      <label className="flex items-center gap-1 cursor-pointer select-none" style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 800 }}>
-                        <input
-                          type="checkbox" checked={sameAsPhone}
-                          onChange={(e) => {
-                            setSameAsPhone(e.target.checked);
-                            if (e.target.checked) setRegWhatsapp(regPhone);
-                          }}
-                          style={{ accentColor: 'var(--gold)', width: 13, height: 13 }}
-                        />
-                        <span>Same as phone</span>
-                      </label>
-                    </div>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">2</div><h3>Shop Details</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><Building2 /></div><b>Shop Name <span className="req">*</span></b></div>
                     <div className="input-wrap">
-                      <Phone />
                       <input
-                        type="tel" required value={regWhatsapp} onChange={(e) => setRegWhatsapp(e.target.value)}
-                        disabled={sameAsPhone} placeholder="WhatsApp number"
-                        style={{ opacity: sameAsPhone ? 0.5 : 1 }}
+                        type="text" required value={regShopName} onChange={(e) => setRegShopName(e.target.value)}
+                        placeholder="e.g. Metro Duplicate Keys"
                       />
                     </div>
                   </div>
-
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <div className="flex justify-between items-center mb-2">
-                      <label style={{ marginBottom: 0 }}>Shop location details</label>
+                  <div className="reg-field">
+                    <div className="reg-field-label">
+                      <div className="reg-ico" style={{ background: 'var(--orange)' }}><MapPin /></div>
+                      <b>Shop Address <span className="req">*</span></b>
                       <button
-                        type="button"
-                        onClick={captureShopLocation}
-                        disabled={regLocLoading}
-                        className="flex items-center gap-1 cursor-pointer select-none"
-                        style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0 }}
+                        type="button" onClick={captureShopLocation} disabled={regLocLoading}
+                        className="reg-trailing loc-btn"
                       >
-                        <Crosshair className={regLocLoading ? 'animate-spin' : ''} style={{ width: 12, height: 12 }} />
+                        <Crosshair className={regLocLoading ? 'animate-spin' : ''} />
                         <span>{regLocLoading ? 'Locating…' : 'Current Location'}</span>
                       </button>
                     </div>
                     <div className="input-wrap">
-                      <MapPin />
                       <input
                         type="text" required value={regLocation} onChange={(e) => setRegLocation(e.target.value)}
                         placeholder="City, State / landmark"
                       />
                     </div>
+                    {/* GPS coordinates captured via the button above - shown so the
+                        shop owner can see/confirm exactly what will be stored
+                        alongside the free-text address (see regLat/regLng state). */}
+                    {regLat != null && regLng != null && (
+                      <p style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <MapPin style={{ width: 11, height: 11 }} /> {regLat.toFixed(5)}, {regLng.toFixed(5)}
+                      </p>
+                    )}
                     {regLocError && (
                       <div style={{ marginTop: 6 }}>
                         <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700 }}>{regLocError}</p>
@@ -1963,7 +1938,44 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 22 }}>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">3</div><h3>Contact &amp; Verification</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Phone Number <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input
+                        type="tel" required value={regPhone} onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="10-digit mobile"
+                      />
+                    </div>
+                  </div>
+                  <div className="reg-field">
+                    <div className="reg-field-label">
+                      <div className="reg-ico" style={{ background: 'var(--teal)' }}><Phone /></div>
+                      <b>WhatsApp Number <span className="req">*</span></b>
+                      <label className="reg-trailing">
+                        <input
+                          type="checkbox" checked={sameAsPhone}
+                          onChange={(e) => {
+                            setSameAsPhone(e.target.checked);
+                            if (e.target.checked) setRegWhatsapp(regPhone);
+                          }}
+                          style={{ accentColor: 'var(--gold)', width: 13, height: 13 }}
+                        />
+                        <span>Same as phone</span>
+                      </label>
+                    </div>
+                    <div className="input-wrap">
+                      <input
+                        type="tel" required value={regWhatsapp} onChange={(e) => setRegWhatsapp(e.target.value)}
+                        disabled={sameAsPhone} placeholder="WhatsApp number"
+                        style={{ opacity: sameAsPhone ? 0.5 : 1 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end" style={{ marginTop: 20 }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -1981,7 +1993,7 @@ export default function App() {
                       }
                       setRegStep(2);
                     }}
-                    className="btn btn-primary"
+                    className="btn btn-primary reg-submit-btn"
                   >
                     Continue to OTP <ArrowRight />
                   </button>
@@ -2075,22 +2087,24 @@ export default function App() {
             {/* STEP 3: Plan & Password */}
             {regStep === 3 && (
               <div>
-                <div className="field">
-                  <label>Create account password</label>
-                  <div className="input-wrap">
-                    <Lock />
-                    <input
-                      type={showRegPassword ? "text" : "password"} required minLength={6} value={regPassword} onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Min 6 characters" style={{ paddingRight: 42 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="pwd-toggle-btn"
-                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
-                    >
-                      {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">1</div><h3>Account Password</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Lock /></div><b>Create Password <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input
+                        type={showRegPassword ? "text" : "password"} required minLength={6} value={regPassword} onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Min 6 characters" style={{ paddingRight: 42 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="pwd-toggle-btn"
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}
+                      >
+                        {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2127,12 +2141,12 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-                  <h4 className="side-section-label" style={{ padding: 0, marginBottom: 10 }}>Upload shop documents</h4>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">2</div><h3>Upload Shop Documents</h3></div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Shop photo</label>
+                      <div className="reg-field-label" style={{ marginBottom: 6 }}><div className="reg-ico" style={{ background: 'var(--pink)' }}><Camera /></div><b>Shop Photo <span className="req">*</span></b></div>
                       <input
                         type="file" accept="image/*" required
                         onClick={primeStoragePermission}
@@ -2150,7 +2164,7 @@ export default function App() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Shop license</label>
+                      <div className="reg-field-label" style={{ marginBottom: 6 }}><div className="reg-ico" style={{ background: 'var(--orange)' }}><FileText /></div><b>Shop License <span className="req">*</span></b></div>
                       <input
                         type="file" accept="image/*,application/pdf" required
                         onClick={primeStoragePermission}
@@ -2168,7 +2182,7 @@ export default function App() {
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Owner Aadhaar</label>
+                      <div className="reg-field-label" style={{ marginBottom: 6 }}><div className="reg-ico" style={{ background: 'var(--maroon)' }}><CreditCard /></div><b>Owner Aadhaar <span className="req">*</span></b></div>
                       <input
                         type="file" accept="image/*,application/pdf" required
                         onClick={primeStoragePermission}
@@ -2224,7 +2238,15 @@ export default function App() {
                   <div className="field"><label>Email</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regEmail}</div></div>
                   <div className="field"><label>Phone</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regPhone}</div></div>
                   <div className="field"><label>WhatsApp</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regWhatsapp}</div></div>
-                  <div className="field full"><label>Shop Location</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regLocation}</div></div>
+                  <div className="field full">
+                    <label>Shop Location</label>
+                    <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{regLocation}</div>
+                    {regLat != null && regLng != null && (
+                      <div style={{ color: 'var(--text-3)', fontWeight: 700, fontSize: 11.5, marginTop: 3 }}>
+                        GPS: {regLat.toFixed(5)}, {regLng.toFixed(5)}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="form-grid" style={{ paddingBottom: 18, marginBottom: 18, borderBottom: '1px solid var(--border)' }}>
@@ -2300,41 +2322,37 @@ export default function App() {
                 </div>
 
                 {regPayMethod === 'card' ? (
-                  <div className="animate-fade-in">
-                    <div className="field">
-                      <label>Card number</label>
+                  <div className="animate-fade-in reg-section">
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><CreditCard /></div><b>Card Number <span className="req">*</span></b></div>
                       <div className="input-wrap">
-                        <CreditCard />
                         <input
                           type="text" required maxLength={16} placeholder="4111 2222 3333 4444" value={regCardNumber} onChange={(e) => setRegCardNumber(e.target.value.replace(/\D/g, ''))}
                           style={{ fontFamily: 'monospace' }}
                         />
                       </div>
                     </div>
-                    <div className="field">
-                      <label>Cardholder name</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><UserCheck /></div><b>Cardholder Name <span className="req">*</span></b></div>
                       <div className="input-wrap">
-                        <UserCheck />
                         <input
                           type="text" required placeholder="RAJESH KUMAR" value={regCardHolder} onChange={(e) => setRegCardHolder(e.target.value.toUpperCase())}
                         />
                       </div>
                     </div>
-                    <div className="form-grid">
-                      <div className="field" style={{ marginBottom: 0 }}>
-                        <label>Expiry date</label>
+                    <div className="row2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div className="reg-field" style={{ marginBottom: 0 }}>
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Calendar /></div><b>Expiry <span className="req">*</span></b></div>
                         <div className="input-wrap">
-                          <Calendar />
                           <input
                             type="text" required maxLength={5} placeholder="MM/YY" value={regCardExpiry} onChange={(e) => setRegCardExpiry(e.target.value)}
                             style={{ textAlign: 'center' }}
                           />
                         </div>
                       </div>
-                      <div className="field" style={{ marginBottom: 0 }}>
-                        <label>CVV</label>
+                      <div className="reg-field" style={{ marginBottom: 0 }}>
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><Lock /></div><b>CVV <span className="req">*</span></b></div>
                         <div className="input-wrap">
-                          <Lock />
                           <input
                             type="password" required maxLength={3} placeholder="***" value={regCardCvv} onChange={(e) => setRegCardCvv(e.target.value.replace(/\D/g, ''))}
                             style={{ textAlign: 'center', fontFamily: 'monospace' }}
@@ -2436,7 +2454,7 @@ export default function App() {
                 onClick={() => resetToDashboard()}
                 className={`side-link ${activeTab === 'dashboard' ? 'active' : ''}`}
               >
-                <Sliders />
+                <span className="nav-ico" style={{ background: 'var(--maroon)' }}><Sliders /></span>
                 <span>{t('dashboard')}</span>
               </button>
 
@@ -2447,21 +2465,21 @@ export default function App() {
                     onClick={() => setActiveTab('shops')}
                     className={`side-link ${activeTab === 'shops' ? 'active' : ''}`}
                   >
-                    <Layers />
+                    <span className="nav-ico" style={{ background: 'var(--blue)' }}><Layers /></span>
                     <span>{t('shops')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('super-customers')}
                     className={`side-link ${activeTab === 'super-customers' ? 'active' : ''}`}
                   >
-                    <Users />
+                    <span className="nav-ico" style={{ background: 'var(--purple)' }}><Users /></span>
                     <span>{t('customers')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('keys')}
                     className={`side-link ${activeTab === 'keys' ? 'active' : ''}`}
                   >
-                    <Database />
+                    <span className="nav-ico" style={{ background: 'var(--teal)' }}><Database /></span>
                     <span>{t('keys')}</span>
                   </button>
 
@@ -2470,21 +2488,21 @@ export default function App() {
                     onClick={() => setActiveTab('pricing-offers')}
                     className={`side-link ${activeTab === 'pricing-offers' ? 'active' : ''}`}
                   >
-                    <Settings />
+                    <span className="nav-ico" style={{ background: 'var(--orange)' }}><Settings /></span>
                     <span>{t('pricing')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('revenue')}
                     className={`side-link ${activeTab === 'revenue' ? 'active' : ''}`}
                   >
-                    <DollarSign />
+                    <span className="nav-ico" style={{ background: 'var(--jgreen)' }}><DollarSign /></span>
                     <span>{t('revenue')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('promotions')}
                     className={`side-link ${activeTab === 'promotions' ? 'active' : ''}`}
                   >
-                    <Megaphone />
+                    <span className="nav-ico" style={{ background: 'var(--pink)' }}><Megaphone /></span>
                     <span>Inventory</span>
                   </button>
 
@@ -2493,7 +2511,7 @@ export default function App() {
                     onClick={() => setActiveTab('support-config')}
                     className={`side-link ${activeTab === 'support-config' ? 'active' : ''}`}
                   >
-                    <Phone />
+                    <span className="nav-ico" style={{ background: 'var(--rose)' }}><Phone /></span>
                     <span>Support Config</span>
                   </button>
                 </>
@@ -2504,21 +2522,21 @@ export default function App() {
                     onClick={() => setActiveTab('search-keys')}
                     className={`side-link ${activeTab === 'search-keys' ? 'active' : ''}`}
                   >
-                    <Search />
+                    <span className="nav-ico" style={{ background: 'var(--blue)' }}><Search /></span>
                     <span>{t('searchKeys')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('register')}
                     className={`side-link ${activeTab === 'register' ? 'active' : ''}`}
                   >
-                    <Plus />
+                    <span className="nav-ico" style={{ background: 'var(--jgreen)' }}><Plus /></span>
                     <span>{t('register')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('history')}
                     className={`side-link ${activeTab === 'history' ? 'active' : ''}`}
                   >
-                    <Users />
+                    <span className="nav-ico" style={{ background: 'var(--purple)' }}><Users /></span>
                     <span>{t('history')}</span>
                   </button>
 
@@ -2527,14 +2545,14 @@ export default function App() {
                     onClick={() => setActiveTab('reports')}
                     className={`side-link ${activeTab === 'reports' ? 'active' : ''}`}
                   >
-                    <BarChart3 />
+                    <span className="nav-ico" style={{ background: 'var(--orange)' }}><BarChart3 /></span>
                     <span>{t('reports')}</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('promotions')}
                     className={`side-link ${activeTab === 'promotions' ? 'active' : ''}`}
                   >
-                    <Megaphone />
+                    <span className="nav-ico" style={{ background: 'var(--pink)' }}><Megaphone /></span>
                     <span>Inventory</span>
                   </button>
 
@@ -2543,14 +2561,14 @@ export default function App() {
                     onClick={() => setActiveTab('customer-care')}
                     className={`side-link ${activeTab === 'customer-care' ? 'active' : ''}`}
                   >
-                    <Phone />
+                    <span className="nav-ico" style={{ background: 'var(--rose)' }}><Phone /></span>
                     <span>Customer Care</span>
                   </button>
                   <button
                     onClick={() => setActiveTab('settings')}
                     className={`side-link ${activeTab === 'settings' ? 'active' : ''}`}
                   >
-                    <Settings />
+                    <span className="nav-ico" style={{ background: 'var(--maroon)' }}><Settings /></span>
                     <span>{t('settings')}</span>
                   </button>
                 </>
@@ -2580,7 +2598,11 @@ export default function App() {
           <main className="app-main flex-1 p-4 pb-24 md:p-6 overflow-y-auto overflow-x-hidden space-y-6" style={{ minWidth: 0 }}>
 
             {/* Top Workspace Header Bar */}
-            <header className="app-topbar flex justify-between items-center mb-6 relative z-50" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 20px' }}>
+            {/* marginBottom trimmed specifically on the Dashboard tab (in
+                place of the mb-6/24px default) as part of fitting the
+                dashboard's card grid on one screen without scrolling -
+                every other tab keeps the normal mb-6 spacing. */}
+            <header className="app-topbar flex justify-between items-center mb-6 relative z-50" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 18, padding: '14px 20px', ...(activeTab === 'dashboard' ? { marginBottom: 12 } : {}) }}>
               <div className="flex items-center gap-2 header-search-wrap" style={{ minWidth: 0, flex: 1 }}>
                 <button className="icon-btn md:hidden" onClick={() => setMobileNavOpen(v => !v)} style={{ flexShrink: 0 }}>
                   <Menu />
@@ -2765,6 +2787,9 @@ export default function App() {
                                 if (n.type === 'SHOP_REGISTRATION' && user.role === 'SUPER_ADMIN') {
                                   setActiveTab('shops');
                                 }
+                                if (n.type === 'CUSTOMER_REGISTRATION' && user.role !== 'SUPER_ADMIN') {
+                                  setActiveTab('history');
+                                }
                                 setShowNotifDropdown(false);
                               } catch (e) {
                                 console.error(e);
@@ -2816,21 +2841,21 @@ export default function App() {
               className={`mbn-item ${activeTab === 'dashboard' ? 'active' : ''}`}
               onClick={() => { resetToDashboard(); setMobileNavOpen(false); }}
             >
-              <Home />
+              <span className="nav-ico-sm" style={{ background: 'var(--maroon)' }}><Home /></span>
               <span>Dashboard</span>
             </button>
             <button
               className={`mbn-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => { setActiveTab('settings'); setMobileNavOpen(false); }}
             >
-              <User />
+              <span className="nav-ico-sm" style={{ background: 'var(--purple)' }}><User /></span>
               <span>Account</span>
             </button>
             <button
               className="mbn-item"
               onClick={() => setShowLangDialog(true)}
             >
-              <Languages />
+              <span className="nav-ico-sm" style={{ background: 'var(--teal)' }}><Languages /></span>
               <span>Language</span>
             </button>
             <button
@@ -2843,7 +2868,7 @@ export default function App() {
                 setMobileNavOpen(false);
               }}
             >
-              <LifeBuoy />
+              <span className="nav-ico-sm" style={{ background: 'var(--rose)' }}><Headset /></span>
               <span>Customer Service</span>
             </button>
           </nav>
@@ -2952,10 +2977,42 @@ function AddCustomerIcon() {
   );
 }
 
+// Flat two-tone "browser window + key search" glyph used on the Search Keys
+// dashboard card - a magnifying glass with a small key inside it, sitting
+// over a browser-style window with a couple of UI-block accents, mirroring
+// the reference design the user asked to match. Original vector artwork
+// (plain shapes/paths), matching the AddCustomerIcon pattern above.
+function SearchKeysIcon() {
+  return (
+    <svg viewBox="0 0 64 64" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      <rect x="6" y="8" width="52" height="40" rx="7" fill="#fff" stroke="#7A1220" strokeWidth="3" />
+      <rect x="6" y="8" width="52" height="12" rx="7" fill="#7A1220" />
+      <circle cx="14" cy="14" r="1.6" fill="#fff" /><circle cx="19" cy="14" r="1.6" fill="#fff" /><circle cx="24" cy="14" r="1.6" fill="#fff" />
+      <rect x="38" y="28" width="12" height="9" rx="2" fill="none" stroke="#C89416" strokeWidth="2" />
+      <line x1="38" y1="42" x2="52" y2="42" stroke="#C89416" strokeWidth="2" strokeLinecap="round" />
+      <g transform="translate(24,32)">
+        <circle r="11" fill="#fff" stroke="#7A1220" strokeWidth="3" />
+        <line x1="8" y1="8" x2="17" y2="17" stroke="#7A1220" strokeWidth="4" strokeLinecap="round" />
+        <g transform="rotate(-40)">
+          <circle cx="-5" cy="0" r="3.6" fill="none" stroke="#C89416" strokeWidth="2" />
+          <line x1="-1.4" y1="0" x2="6" y2="0" stroke="#C89416" strokeWidth="2" strokeLinecap="round" />
+          <line x1="4" y1="0" x2="4" y2="3" stroke="#C89416" strokeWidth="2" strokeLinecap="round" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
 const DASHBOARD_PRODUCT_CARDS = [
   { type: 'Used Machines', icon: Wrench, image: usedMachinesImg, description: 'View and manage used machines' },
   { type: 'ECM Service', icon: Cpu, image: ecmServiceImg, description: 'Manage ECM service records' },
-  { type: 'Meter Service', icon: Gauge, image: meterServiceImg, description: 'Track and manage meter services' },
+  // imgScale: the Meter Service product photo has more transparent
+  // padding baked into the source image than the other three, so at the
+  // shared .icon-badge.photo size it reads visibly smaller than its
+  // siblings even though the box is identical - a small CSS scale-up
+  // (applied to the <img> only, box size untouched) compensates for that
+  // without affecting Used Machines/ECM/Scanning.
+  { type: 'Meter Service', icon: Gauge, image: meterServiceImg, description: 'Track and manage meter services', imgScale: 1.14 },
   { type: 'Scanning Service', icon: ScanLine, image: scanningServiceImg, description: 'Scan & process compliance entries' },
 ];
 
@@ -2982,7 +3039,7 @@ function DashCardGrid({ items }) {
           >
             {item.image ? (
               <div className={`icon-badge photo${item.compact ? ' compact' : ''}`}>
-                <img src={item.image} alt="" />
+                <img src={item.image} alt="" style={item.imgScale ? { transform: `scale(${item.imgScale})` } : undefined} />
               </div>
             ) : (
               <div className={`icon-badge big${item.iconVariant ? ` ${item.iconVariant}` : ''}${item.compact ? ' compact' : ''}`}><Icon /></div>
@@ -3067,7 +3124,12 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
   if (user.role === 'SUPER_ADMIN') {
     return (
       <div className="animate-fade-in">
-        <div className="page-head">
+        {/* Dashboard-only compaction: page-head is shared across 16 other
+            screens (list/table pages that scroll freely and want the full
+            20px breathing room), so it's trimmed here via inline style
+            rather than editing the shared class - part of fitting the
+            dashboard's card grid on one screen without scrolling. */}
+        <div className="page-head" style={{ marginBottom: 10 }}>
           <div>
             <div className="eyebrow"><Shield /> Super Admin Control</div>
             <h1>Welcome back, {(user.name || 'Admin').split(' ')[0]} 👋</h1>
@@ -3083,7 +3145,7 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
             share the same size/spacing via DashCardGrid. */}
         <DashCardGrid items={[
           { title: 'New Customer', description: 'Register a compliance entry for new customer', icon: AddCustomerIcon, iconVariant: 'flat-icon', onClick: () => setActiveTab('super-customers') },
-          { title: 'Shops', description: 'View and manage every registered shop', icon: Store, onClick: () => setActiveTab('shops') },
+          { title: 'Shops', description: 'View and manage every registered shop', image: keyShopLogo, onClick: () => setActiveTab('shops') },
           ...DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, image: c.image, onClick: () => goToProductType(c.type) })),
           { title: 'Customer Support', description: 'Manage the customer support contact & resources', image: customerSupportIcon, fullWidth: true, compact: true, onClick: () => setActiveTab('support-config') },
         ]} />
@@ -3096,7 +3158,12 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
   const firstName = (user.name || 'there').split(' ')[0];
   return (
     <div className="animate-fade-in">
-      <div className="page-head">
+      {/* Dashboard-only compaction: page-head is shared across 16 other
+          screens (list/table pages that scroll freely and want the full
+          20px breathing room), so it's trimmed here via inline style
+          rather than editing the shared class - part of fitting the
+          dashboard's card grid on one screen without scrolling. */}
+      <div className="page-head" style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {data.shop?.logoUrl ? (
             <img src={cleanGoogleImageUrl(data.shop.logoUrl)} alt="Shop Logo" style={{ width: 48, height: 48, borderRadius: 14, objectFit: 'cover', border: '1px solid var(--border-2)' }} />
@@ -3112,9 +3179,9 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
       </div>
 
       {sub && sub.daysRemaining <= 7 && (
-        <div className="card" style={{ marginBottom: 22, borderColor: 'rgba(240,185,11,0.4)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+        <div className="card" style={{ marginBottom: 10, padding: 14, borderColor: 'rgba(240,185,11,0.4)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div className="icon-badge"><AlertTriangle /></div>
+            <div className="icon-badge rose"><AlertTriangle /></div>
             <div>
               <p style={{ fontFamily: 'var(--display)', fontWeight: 700, color: 'var(--text-0)', fontSize: 14 }}>Subscription Renewal Required!</p>
               <p style={{ fontSize: 12.5, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>
@@ -3136,7 +3203,7 @@ function DashboardView({ t, setActiveTab, setSearchDispatch }) {
           Support card spanning both columns. */}
       <DashCardGrid items={[
         { title: 'New Customer', description: 'Register a compliance entry for new customer', icon: AddCustomerIcon, iconVariant: 'flat-icon', onClick: () => setActiveTab('register') },
-        { title: 'Search Keys', description: 'Find and digitize key records quickly', icon: Search, onClick: () => setActiveTab('search-keys') },
+        { title: 'Search Keys', description: 'Find and digitize key records quickly', icon: SearchKeysIcon, iconVariant: 'flat-icon', onClick: () => setActiveTab('search-keys') },
         ...DASHBOARD_PRODUCT_CARDS.map(c => ({ title: c.type, description: c.description, icon: c.icon, image: c.image, onClick: () => goToProductType(c.type) })),
         { title: 'Customer Support', description: 'Get help & view support contact details', image: customerSupportIcon, fullWidth: true, compact: true, onClick: () => setActiveTab('customer-care') },
       ]} />
@@ -3394,7 +3461,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
         plan: subPlan,
         endDate: formattedEndDate,
         companyDetails,
-        themeColor: '#4f46e5',
+        themeColor: '#C89416',
         shopPhoto: provisionShopPhoto,
         shopLicense: provisionShopLicense,
         ownerAadhaar: provisionOwnerAadhaar
@@ -3629,8 +3696,15 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
               {filteredShops.map(s => (
                 <tr key={s.id}>
                   <td>
-                    <div className="cell-primary">{s.name}</div>
-                    <div className="cell-sub">ID: {s.id}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className={`icon-badge ${s.isActive ? 'jgreen' : 'rose'}`} style={{ width: 34, height: 34, borderRadius: 10 }}>
+                        <Store style={{ width: 16, height: 16 }} />
+                      </div>
+                      <div>
+                        <div className="cell-primary">{s.name}</div>
+                        <div className="cell-sub">ID: {s.id}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>
                     <div className="cell-primary" style={{ fontSize: 13 }}>{s.users?.[0]?.name || 'N/A'}</div>
@@ -3707,67 +3781,71 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
             )}
 
             <form onSubmit={handleCreateShopSubmit}>
-              <div className="form-grid">
-                <div className="field">
-                  <label>Shop Name</label>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Shop Info</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Store /></div><b>Shop Name <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <Store />
                     <input
                       type="text" required value={shopName} onChange={(e) => setShopName(e.target.value)}
                       placeholder="e.g. Apex Duplicate Keys"
                     />
                   </div>
                 </div>
-                <div className="field">
-                  <label>Admin Full Name</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><MapPin /></div><b>Shop Address / Location <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <User />
+                    <input
+                      type="text" required value={provisionLocation} onChange={(e) => setProvisionLocation(e.target.value)}
+                      placeholder="e.g. Metro Station Road, Sector 5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">2</div><h3>Owner Details</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><User /></div><b>Admin Full Name <span className="req">*</span></b></div>
+                  <div className="input-wrap">
                     <input
                       type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)}
                       placeholder="e.g. Ramesh Kumar"
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>Admin Email</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Mail /></div><b>Admin Email <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <Mail />
                     <input
                       type="email" required value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)}
                       placeholder="e.g. admin@apexkeys.com"
                     />
                   </div>
                 </div>
-                <div className="field">
-                  <label>Initial Password</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><Lock /></div><b>Initial Password <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <Lock />
                     <input
                       type="password" required value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)}
                       placeholder="e.g. apexpassword123"
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="form-grid">
-                <div className="field">
-                  <label>Phone Number</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Phone Number <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <Phone />
                     <input
                       type="tel" required value={provisionPhone} onChange={(e) => setProvisionPhone(e.target.value)}
                       placeholder="e.g. +91 99999 99999"
                     />
                   </div>
                 </div>
-                <div className="field">
-                  <div className="flex justify-between items-center mb-2">
-                    <label style={{ marginBottom: 0 }}>WhatsApp Number</label>
-                    <label className="flex items-center gap-1 cursor-pointer select-none" style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 800 }}>
+                <div className="reg-field">
+                  <div className="reg-field-label">
+                    <div className="reg-ico" style={{ background: 'var(--rose)' }}><Phone /></div>
+                    <b>WhatsApp Number <span className="req">*</span></b>
+                    <label className="reg-trailing">
                       <input
                         type="checkbox" checked={provisionSameAsPhone}
                         onChange={(e) => {
@@ -3780,7 +3858,6 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     </label>
                   </div>
                   <div className="input-wrap">
-                    <Phone />
                     <input
                       type="tel" required value={provisionWhatsapp} onChange={(e) => setProvisionWhatsapp(e.target.value)}
                       disabled={provisionSameAsPhone} placeholder="WhatsApp Number"
@@ -3790,44 +3867,36 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                 </div>
               </div>
 
-              <div className="field">
-                <label>Shop Address / Location</label>
-                <div className="input-wrap">
-                  <MapPin />
-                  <input
-                    type="text" required value={provisionLocation} onChange={(e) => setProvisionLocation(e.target.value)}
-                    placeholder="e.g. Metro Station Road, Sector 5"
-                  />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">3</div><h3>Subscription</h3></div>
+                <div className="form-grid">
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><DollarSign /></div><b>Subscription Plan <span className="req">*</span></b></div>
+                    <select
+                      className="sel"
+                      value={subPlan} onChange={(e) => setSubPlan(e.target.value)}
+                    >
+                      <option value="MONTHLY">Monthly Plan • Rs. {planPrices.MONTHLY}/mo</option>
+                      <option value="HALF_YEARLY">6-Month Plan • Rs. {planPrices.HALF_YEARLY}/6mo</option>
+                      <option value="YEARLY">Yearly Plan • Rs. {planPrices.YEARLY}/yr</option>
+                    </select>
+                  </div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><Calendar /></div><b>End Date (Validity) <span className="req">*</span></b></div>
+                    <input
+                      type="date" required value={subEndDate} disabled
+                      style={{ width: '100%', background: 'var(--card-2)', opacity: 0.6, border: '1.5px solid var(--border-2)', color: 'var(--text-2)', borderRadius: 13, padding: '13px 15px', fontSize: 14, outline: 'none', cursor: 'not-allowed' }}
+                    />
+                    <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Auto-calculated based on selected tier</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="form-grid" style={{ borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-                <div className="field">
-                  <label>Subscription Plan</label>
-                  <select
-                    className="sel"
-                    value={subPlan} onChange={(e) => setSubPlan(e.target.value)}
-                  >
-                    <option value="MONTHLY">Monthly Plan • Rs. {planPrices.MONTHLY}/mo</option>
-                    <option value="HALF_YEARLY">6-Month Plan • Rs. {planPrices.HALF_YEARLY}/6mo</option>
-                    <option value="YEARLY">Yearly Plan • Rs. {planPrices.YEARLY}/yr</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label>End Date (Validity)</label>
-                  <input
-                    type="date" required value={subEndDate} disabled
-                    style={{ width: '100%', background: 'var(--card-2)', opacity: 0.6, border: '1.5px solid var(--border-2)', color: 'var(--text-2)', borderRadius: 13, padding: '13px 15px', fontSize: 14, outline: 'none', cursor: 'not-allowed' }}
-                  />
-                  <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Auto-calculated based on selected tier</span>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
-                <label className="eyebrow" style={{ marginBottom: 12 }}><UploadCloud /> Upload Shop Documents</label>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">4</div><h3>Upload Shop Documents</h3></div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Shop Photo</label>
+                    <div className="reg-field-label" style={{ marginBottom: 6 }}><div className="reg-ico" style={{ background: 'var(--purple)' }}><Camera /></div><b>Shop Photo <span className="req">*</span></b></div>
                     <input
                       type="file" accept="image/*" required
                       onClick={primeStoragePermission}
@@ -3844,7 +3913,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Shop License</label>
+                    <div className="reg-field-label" style={{ marginBottom: 6 }}><div className="reg-ico" style={{ background: 'var(--pink)' }}><FileText /></div><b>Shop License <span className="req">*</span></b></div>
                     <input
                       type="file" accept="image/*,application/pdf" required
                       onClick={primeStoragePermission}
@@ -3861,7 +3930,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--text-3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.04em' }}>Owner Aadhaar</label>
+                    <div className="reg-field-label" style={{ marginBottom: 6 }}><div className="reg-ico" style={{ background: 'var(--blue)' }}><CreditCard /></div><b>Owner Aadhaar <span className="req">*</span></b></div>
                     <input
                       type="file" accept="image/*,application/pdf" required
                       onClick={primeStoragePermission}
@@ -3915,54 +3984,54 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
             </div>
 
             <form onSubmit={handleEditShopSubmit}>
-              <div className="field">
-                <label>Workspace Name</label>
-                <div className="input-wrap">
-                  <Store />
-                  <input
-                    type="text" required value={editName} onChange={(e) => setEditName(e.target.value)}
-                  />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Workspace Details</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Store /></div><b>Workspace Name <span className="req">*</span></b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="text" required value={editName} onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><ExternalLink /></div><b>Logo URL</b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="field">
-                <label>Phone Number</label>
-                <div className="input-wrap">
-                  <Phone />
-                  <input
-                    type="tel" required value={editPhone} onChange={(e) => setEditPhone(e.target.value)}
-                  />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">2</div><h3>Contact &amp; Location</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Phone Number <span className="req">*</span></b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="tel" required value={editPhone} onChange={(e) => setEditPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><MapPin /></div><b>Registered Address (Fixed)</b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="text" readOnly value={editAddress}
+                      style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="field">
-                <label>Registered Address (Fixed)</label>
-                <div className="input-wrap">
-                  <MapPin />
-                  <input
-                    type="text" readOnly value={editAddress}
-                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                  />
-                </div>
-              </div>
-
-              <div className="field" style={{ borderTop: '1px solid var(--border)', paddingTop: 18 }}>
-                <label>Logo URL</label>
-                <div className="input-wrap">
-                  <ExternalLink />
-                  <input
-                    type="text" value={editLogoUrl} onChange={(e) => setEditLogoUrl(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
-                <label className="eyebrow" style={{ marginBottom: 12 }}><FileCheck /> Verification Documents Review</label>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">3</div><h3>Verification Documents Review</h3></div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {/* Shop Photo */}
                   <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 14, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8 }}>
                     <div>
-                      <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', fontWeight: 700, textTransform: 'uppercase' }}>Shop Photo</span>
+                      <span style={{ fontSize: 9, color: 'var(--purple)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, textTransform: 'uppercase' }}><Camera style={{ width: 11, height: 11 }} /> Shop Photo</span>
                       {editShopPhoto ? (
                         <div style={{ marginTop: 6, height: 56, width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-2)', background: '#000' }}>
                           <img src={getAssetUrl(editShopPhoto)} className="w-full h-full object-cover" alt="Shop Photo Preview" />
@@ -3986,7 +4055,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                   {/* Shop License */}
                   <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 14, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8 }}>
                     <div>
-                      <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', fontWeight: 700, textTransform: 'uppercase' }}>Shop License</span>
+                      <span style={{ fontSize: 9, color: 'var(--pink)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, textTransform: 'uppercase' }}><FileText style={{ width: 11, height: 11 }} /> Shop License</span>
                       {editShopLicense ? (
                         <div style={{ marginTop: 6, height: 56, width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-2)', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {(editShopLicense.startsWith('data:application/pdf') || editShopLicense.toLowerCase().endsWith('.pdf')) ? (
@@ -4014,7 +4083,7 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
                   {/* Owner Aadhaar */}
                   <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 14, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8 }}>
                     <div>
-                      <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', fontWeight: 700, textTransform: 'uppercase' }}>Owner Aadhaar</span>
+                      <span style={{ fontSize: 9, color: 'var(--blue)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, textTransform: 'uppercase' }}><CreditCard style={{ width: 11, height: 11 }} /> Owner Aadhaar</span>
                       {editOwnerAadhaar ? (
                         <div style={{ marginTop: 6, height: 56, width: '100%', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-2)', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {(editOwnerAadhaar.startsWith('data:application/pdf') || editOwnerAadhaar.toLowerCase().endsWith('.pdf')) ? (
@@ -4080,25 +4149,28 @@ function ShopsManagementView({ t, api, initiallyOpenAddModal, onCloseInitiallyOp
             </div>
 
             <form onSubmit={handleUpdateSubscriptionSubmit}>
-              <div className="field">
-                <label>Plan Tier</label>
-                <select
-                  className="sel"
-                  value={newPlan} onChange={(e) => setNewPlan(e.target.value)}
-                >
-                  <option value="MONTHLY">Monthly Plan • Rs. {planPrices.MONTHLY}/mo</option>
-                  <option value="HALF_YEARLY">6-Month Plan • Rs. {planPrices.HALF_YEARLY}/6mo</option>
-                  <option value="YEARLY">Yearly Plan • Rs. {planPrices.YEARLY}/yr</option>
-                </select>
-              </div>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Plan &amp; Validity</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><DollarSign /></div><b>Plan Tier <span className="req">*</span></b></div>
+                  <select
+                    className="sel"
+                    value={newPlan} onChange={(e) => setNewPlan(e.target.value)}
+                  >
+                    <option value="MONTHLY">Monthly Plan • Rs. {planPrices.MONTHLY}/mo</option>
+                    <option value="HALF_YEARLY">6-Month Plan • Rs. {planPrices.HALF_YEARLY}/6mo</option>
+                    <option value="YEARLY">Yearly Plan • Rs. {planPrices.YEARLY}/yr</option>
+                  </select>
+                </div>
 
-              <div className="field">
-                <label>New End Date</label>
-                <input
-                  type="date" required value={newEndDate} disabled
-                  style={{ width: '100%', background: 'var(--card-2)', opacity: 0.6, border: '1.5px solid var(--border-2)', color: 'var(--text-2)', borderRadius: 13, padding: '13px 15px', fontSize: 14, outline: 'none', cursor: 'not-allowed' }}
-                />
-                <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Auto-calculated based on selected tier</span>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><Calendar /></div><b>New End Date <span className="req">*</span></b></div>
+                  <input
+                    type="date" required value={newEndDate} disabled
+                    style={{ width: '100%', background: 'var(--card-2)', opacity: 0.6, border: '1.5px solid var(--border-2)', color: 'var(--text-2)', borderRadius: 13, padding: '13px 15px', fontSize: 14, outline: 'none', cursor: 'not-allowed' }}
+                  />
+                  <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Auto-calculated based on selected tier</span>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
@@ -4432,7 +4504,15 @@ function SuperCustomersView({ t, api, searchDispatch }) {
               <tr key={c.id}>
                 <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.shop ? c.shop.name : 'Shop Workspace'}</td>
                 <td>
-                  <div className="cell-primary">{c.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className={`icon-badge ${c.photoUrl ? 'jgreen' : 'rose'}`} style={{ width: 34, height: 34, borderRadius: 10 }}>
+                      <User style={{ width: 16, height: 16 }} />
+                    </div>
+                    <div>
+                      <div className="cell-primary">{c.name}</div>
+                      <div className="cell-sub">{c.photoUrl ? 'Photo on file' : 'Photo pending'}</div>
+                    </div>
+                  </div>
                 </td>
                 <td className="cell-sub" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
                 <td>
@@ -4491,66 +4571,75 @@ function SuperCustomersView({ t, api, searchDispatch }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs font-semibold" style={{ marginBottom: 18 }}>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Phone Contact</span>
-                <span style={{ color: 'var(--text-0)' }}>{viewCust.phone}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Registry Date</span>
-                <span style={{ color: 'var(--text-0)' }}>{new Date(viewCust.createdAt).toLocaleString()}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Address</span>
-                <span style={{ color: 'var(--text-0)' }} className="block truncate">{viewCust.address}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Key Blank Code</span>
-                <span className="badge badge-active"><span className="dot" />{viewCust.keyNumber}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-xs font-semibold" style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>ID Verification</span>
-                <span style={{ color: 'var(--text-0)' }}>{viewCust.idProofType}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>ID Number (Decrypted)</span>
-                <span style={{ color: 'var(--gold)' }}>{viewCust.idProofNumber}</span>
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 14, marginBottom: 18 }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MapPin style={{ width: 18, height: 18, color: viewCust.latitude ? 'var(--green)' : 'var(--text-3)', flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
-                    {viewCust.latitude && viewCust.longitude ? (
-                      <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {viewCust.latitude} &bull; Long: {viewCust.longitude}</p>
-                    ) : (
-                      <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
-                    )}
-                  </div>
+            <div className="reg-section">
+              <div className="reg-section-head"><div className="reg-num">1</div><h3>Contact &amp; Identity</h3></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Phone /></div><b>Phone Contact</b></div>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }}>{viewCust.phone}</span>
                 </div>
-                {viewCust.mapsLink && (
-                  <a href={viewCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
-                    <span>Google Maps</span><ExternalLink className="h-3 w-3" />
-                  </a>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Calendar /></div><b>Registry Date</b></div>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }}>{new Date(viewCust.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><Home /></div><b>Address</b></div>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }} className="block truncate">{viewCust.address}</span>
+                </div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><KeyRound /></div><b>Key Blank Code</b></div>
+                  <span className="badge badge-active"><span className="dot" />{viewCust.keyNumber}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="reg-section">
+              <div className="reg-section-head"><div className="reg-num">2</div><h3>Verification &amp; Location</h3></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Fingerprint /></div><b>ID Verification</b></div>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }}>{viewCust.idProofType}</span>
+                </div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><Lock /></div><b>ID Number (Decrypted)</b></div>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gold)' }}>{viewCust.idProofNumber}</span>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 14, marginTop: 4 }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`icon-badge ${viewCust.latitude ? 'jgreen' : 'rose'}`} style={{ width: 32, height: 32, borderRadius: 10 }}>
+                      <MapPin style={{ width: 16, height: 16 }} />
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
+                      {viewCust.latitude && viewCust.longitude ? (
+                        <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {viewCust.latitude} &bull; Long: {viewCust.longitude}</p>
+                      ) : (
+                        <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
+                      )}
+                    </div>
+                  </div>
+                  {viewCust.mapsLink && (
+                    <a href={viewCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
+                      <span>Google Maps</span><ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                {viewCust.capturedAddress && (
+                  <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 42, fontWeight: 600 }}>
+                    <span style={{ display: 'block', fontWeight: 800, fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase' }}>Captured Address</span>
+                    <span>{viewCust.capturedAddress}</span>
+                  </div>
                 )}
               </div>
-              {viewCust.capturedAddress && (
-                <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 26, fontWeight: 600 }}>
-                  <span style={{ display: 'block', fontWeight: 800, fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase' }}>Captured Address</span>
-                  <span>{viewCust.capturedAddress}</span>
-                </div>
-              )}
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: viewCust.documents && viewCust.documents.length > 0 ? 18 : 0 }}>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Webcam Photo</span>
+            <div className="reg-section" style={{ marginBottom: 0 }}>
+              <div className="reg-section-head"><div className="reg-num">3</div><h3>Documents &amp; Photo</h3></div>
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Camera /></div><b>Webcam Photo</b></div>
                 {viewCust.photoUrl ? (
                   <div style={{ width: '100%', height: 128, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
                     <img src={getAssetUrl(viewCust.photoUrl)} alt="Customer snapshot" className="w-full h-full object-cover" />
@@ -4561,19 +4650,28 @@ function SuperCustomersView({ t, api, searchDispatch }) {
                   </div>
                 )}
               </div>
-            </div>
 
-            {viewCust.documents && viewCust.documents.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }} className="space-y-2">
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 4 }}>Attached ID Copies</span>
-                {viewCust.documents.map(d => (
-                  <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
-                    <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
-                    <button type="button" onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} className="hover:underline">Download</button>
-                  </div>
-                ))}
-              </div>
-            )}
+              {viewCust.documents && viewCust.documents.length > 0 && (
+                <div className="reg-field space-y-2">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><FileCheck /></div><b>Attached ID Copies</b></div>
+                  {viewCust.documents.map((d, di) => {
+                    const docColors = ['purple', 'pink', 'blue', 'orange', 'teal', 'skyblue', 'rose', 'jgreen'];
+                    const docColor = docColors[di % docColors.length];
+                    return (
+                      <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className={`icon-badge ${docColor}`} style={{ width: 26, height: 26, borderRadius: 8 }}>
+                            <FileText style={{ width: 13, height: 13 }} />
+                          </div>
+                          <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
+                        </div>
+                        <button type="button" onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')} style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} className="hover:underline">Download</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
               <button onClick={() => setViewCust(null)} className="btn btn-ghost">Close File</button>
@@ -4719,18 +4817,20 @@ function KeysCatalogView({ api, searchDispatch }) {
         if (filteredKeys.length === 0) {
           return (
             <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 220 }}>
-              <div className="icon-badge"><KeyRound /></div>
+              <div className="icon-badge maroon"><KeyRound /></div>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>No key blanks match this search</span>
             </div>
           );
         }
 
+        const catalogAccents = ['var(--purple)', 'var(--pink)', 'var(--blue)', 'var(--orange)', 'var(--teal)', 'var(--skyblue)', 'var(--rose)', 'var(--jgreen)'];
+
         return (
           <div className="product-grid stagger-in">
-            {filteredKeys.map(k => (
+            {filteredKeys.map((k, idx) => (
               <div key={k.id} className="product-card">
-                <div className="product-img">
-                  <KeyRound />
+                <div className="product-img" style={{ background: catalogAccents[idx % catalogAccents.length] }}>
+                  <KeyRound style={{ color: '#ffffff' }} />
                   <span className="product-tag">{k.category}</span>
                 </div>
                 <div className="product-body">
@@ -4785,85 +4885,72 @@ function KeysCatalogView({ api, searchDispatch }) {
             )}
 
             {editKey && (
-              <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 14, padding: '16px 18px', marginBottom: 20 }}>
-                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Hash style={{ width: 15, height: 15, color: 'var(--gold)' }} />
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Key Number / Code</div>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)', wordBreak: 'break-word' }}>{editKey.keyNumber}</div>
-                    </div>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Linked Records</h3></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Hash /></div><b>Key Number / Code</b></div>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)', wordBreak: 'break-word' }}>{editKey.keyNumber}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Store style={{ width: 15, height: 15, color: 'var(--gold)' }} />
-                    </span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>Connected Shop</div>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)', wordBreak: 'break-word' }}>{editKey.shop ? editKey.shop.name : 'Global Catalogue'}</div>
-                    </div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><Store /></div><b>Connected Shop</b></div>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)', wordBreak: 'break-word' }}>{editKey.shop ? editKey.shop.name : 'Global Catalogue'}</span>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', marginTop: 14, paddingTop: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 9, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <User style={{ width: 15, height: 15, color: 'var(--gold)' }} />
-                  </span>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>
-                      Connected Customer{editKey.customers && editKey.customers.length !== 1 ? 's' : ''}
+                <div className="reg-field" style={{ marginTop: 13 }}>
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><User /></div><b>Connected Customer{editKey.customers && editKey.customers.length !== 1 ? 's' : ''}</b></div>
+                  {editKey.customers && editKey.customers.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {editKey.customers.map(c => (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)' }}>{c.name}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)' }}>{c.phone}</span>
+                        </div>
+                      ))}
                     </div>
-                    {editKey.customers && editKey.customers.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {editKey.customers.map(c => (
-                          <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-0)' }}>{c.name}</span>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)' }}>{c.phone}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', fontStyle: 'italic' }}>No customer linked yet</span>
-                    )}
-                  </div>
+                  ) : (
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-3)', fontStyle: 'italic' }}>No customer linked yet</span>
+                  )}
                 </div>
               </div>
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="field">
-                  <label>Key Code</label>
-                  <div className="input-wrap">
-                    <Hash />
-                    <input
-                      type="text" required value={keyNumber} onChange={(e) => setKeyNumber(e.target.value)}
-                      placeholder="e.g. CY-102"
-                    />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">{editKey ? 2 : 1}</div><h3>Key Identity</h3></div>
+                <div className="form-grid">
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Hash /></div><b>Key Code <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input
+                        type="text" required value={keyNumber} onChange={(e) => setKeyNumber(e.target.value)}
+                        placeholder="e.g. CY-102"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="field">
-                  <label>Category Type</label>
-                  <div className="input-wrap">
-                    <Layers />
-                    <input
-                      type="text" required value={category} onChange={(e) => setCategory(e.target.value)}
-                      placeholder="e.g. Padlock"
-                    />
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Layers /></div><b>Category Type <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input
+                        type="text" required value={category} onChange={(e) => setCategory(e.target.value)}
+                        placeholder="e.g. Padlock"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="field">
-                <label>Back Image URL</label>
-                <div className="input-wrap">
-                  <Camera />
-                  <input
-                    type="text" value={backImageUrl} onChange={(e) => setBackImageUrl(e.target.value)}
-                    placeholder="https://images..."
-                  />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">{editKey ? 3 : 2}</div><h3>Reference Image</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Camera /></div><b>Back Image URL</b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="text" value={backImageUrl} onChange={(e) => setBackImageUrl(e.target.value)}
+                      placeholder="https://images..."
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -5497,10 +5584,10 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
   };
 
   const typeMeta = (t) => t === 'AD'
-    ? { label: 'Advertisement', icon: Megaphone }
+    ? { label: 'Advertisement', icon: Megaphone, color: 'purple' }
     : t === 'OFFER'
-      ? { label: 'Offer', icon: BadgePercent }
-      : { label: 'Promotional Product', icon: Package };
+      ? { label: 'Offer', icon: BadgePercent, color: 'rose' }
+      : { label: 'Promotional Product', icon: Package, color: 'teal' };
 
   const isExpiredOffer = (promo) => promo.type === 'OFFER' && promo.validUntil && new Date(promo.validUntil) < new Date();
 
@@ -5580,7 +5667,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
         </div>
       ) : visiblePromotions.length === 0 ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 220 }}>
-          <div className="icon-badge"><Package /></div>
+          <div className="icon-badge teal"><Package /></div>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>{onlyOffers ? 'No offers published yet.' : 'No inventory listed yet.'}</span>
         </div>
       ) : (
@@ -5595,7 +5682,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                   {promo.imageUrl ? (
                     <img src={cleanGoogleImageUrl(promo.imageUrl)} alt={promo.title} className="w-full h-full object-cover" style={{ opacity: 0.9 }} />
                   ) : (
-                    <Icon />
+                    <div className={`icon-badge ${meta.color}`}><Icon /></div>
                   )}
                   <span className="product-tag">
                     {promo.type === 'PRODUCT' && promo.productType ? (
@@ -5719,103 +5806,107 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className="field">
-                <label>Name</label>
-                <div className="input-wrap">
-                  <Tag />
-                  <input
-                    type="text" required value={title} onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Premium Godrej Key Blanks - Bulk Pack"
-                  />
-                </div>
-              </div>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Listing Details</h3></div>
 
-              <div className="field">
-                <label>Product Type</label>
-                <select className="sel" value={productType} onChange={(e) => setProductType(e.target.value)}>
-                  {PRODUCT_TYPES.map(pt => (
-                    <option key={pt} value={pt}>{pt}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field">
-                <label>Description (optional)</label>
-                <div className="input-wrap">
-                  <FileText />
-                  <input
-                    type="text" value={description} onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Short description shown on the listing card"
-                  />
-                </div>
-              </div>
-
-              <div className="field">
-                <label>{type === 'PRODUCT' ? 'Product Photo (optional)' : 'Image / Media (optional)'}</label>
-                <div className="flex gap-2">
-                  <div className="input-wrap" style={{ flex: 1 }}>
-                    <ImageIcon />
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Tag /></div><b>Name <span className="req">*</span></b></div>
+                  <div className="input-wrap">
                     <input
-                      type="text" value={imageUrl}
-                      onChange={(e) => setImageUrl(cleanGoogleImageUrl(e.target.value))}
-                      placeholder="Paste Image URL (or Google Image Link)"
+                      type="text" required value={title} onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Premium Godrej Key Blanks - Bulk Pack"
                     />
                   </div>
-                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', flexShrink: 0 }}>
-                    <Upload className="h-3.5 w-3.5" />
-                    <span>Upload</span>
+                </div>
+
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><Layers /></div><b>Product Type</b></div>
+                  <select className="sel" value={productType} onChange={(e) => setProductType(e.target.value)}>
+                    {PRODUCT_TYPES.map(pt => (
+                      <option key={pt} value={pt}>{pt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><FileText /></div><b>Description (optional)</b></div>
+                  <div className="input-wrap">
                     <input
-                      type="file" accept="image/*" className="hidden"
-                      onClick={primeStoragePermission}
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setImageUrl(reader.result);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
+                      type="text" value={description} onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Short description shown on the listing card"
                     />
-                  </label>
-                </div>
-                {imageUrl && (
-                  <div style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', height: 110, background: 'var(--card-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src={cleanGoogleImageUrl(imageUrl)} alt="Preview" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
                   </div>
-                )}
-              </div>
-
-              <div className="field">
-                <label>Price (optional)</label>
-                <div className="input-wrap">
-                  <IndianRupee />
-                  <input
-                    type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)}
-                    placeholder="Leave blank if not applicable"
-                  />
                 </div>
               </div>
 
-              <div className="field">
-                <label>Phone Number</label>
-                <div className="input-wrap">
-                  <Phone />
-                  <input
-                    type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. 9876543210"
-                  />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">2</div><h3>Media &amp; Pricing</h3></div>
+
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><ImageIcon /></div><b>{type === 'PRODUCT' ? 'Product Photo (optional)' : 'Image / Media (optional)'}</b></div>
+                  <div className="flex gap-2">
+                    <div className="input-wrap" style={{ flex: 1 }}>
+                      <input
+                        type="text" value={imageUrl}
+                        onChange={(e) => setImageUrl(cleanGoogleImageUrl(e.target.value))}
+                        placeholder="Paste Image URL (or Google Image Link)"
+                      />
+                    </div>
+                    <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', flexShrink: 0 }}>
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Upload</span>
+                      <input
+                        type="file" accept="image/*" className="hidden"
+                        onClick={primeStoragePermission}
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setImageUrl(reader.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {imageUrl && (
+                    <div style={{ marginTop: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', height: 110, background: 'var(--card-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <img src={cleanGoogleImageUrl(imageUrl)} alt="Preview" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
+                    </div>
+                  )}
                 </div>
-                <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Shown on the listing card as a tap-to-call button for buyers.</span>
+
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><IndianRupee /></div><b>Price (optional)</b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)}
+                      placeholder="Leave blank if not applicable"
+                    />
+                  </div>
+                </div>
+
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Phone Number <span className="req">*</span></b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
+                    />
+                  </div>
+                  <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Shown on the listing card as a tap-to-call button for buyers.</span>
+                </div>
               </div>
 
               {type === 'OFFER' && (
-                <>
-                  <div className="field">
-                    <label>Discount Percentage (optional)</label>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">3</div><h3>Offer Terms</h3></div>
+
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><Percent /></div><b>Discount Percentage (optional)</b></div>
                     <div className="input-wrap">
-                      <Percent />
                       <input
                         type="number" min="0" max="100" step="1" value={discountPercentage}
                         onChange={(e) => setDiscountPercentage(e.target.value)}
@@ -5824,10 +5915,9 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                     </div>
                   </div>
 
-                  <div className="field">
-                    <label>Valid Until (optional)</label>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><CalendarRange /></div><b>Valid Until (optional)</b></div>
                     <div className="input-wrap">
-                      <CalendarRange />
                       <input
                         type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
                       />
@@ -5835,8 +5925,8 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                     <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Leave blank for an offer with no expiry. Expired offers are hidden from the shared feed.</span>
                   </div>
 
-                  <div className="field">
-                    <label>Link to one of your existing listings (optional)</label>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><Boxes /></div><b>Link to one of your existing listings (optional)</b></div>
                     <select className="sel" value={linkedPromotionId} onChange={(e) => setLinkedPromotionId(e.target.value)}>
                       <option value="">No linked listing</option>
                       {linkableListings.map(p => (
@@ -5844,7 +5934,7 @@ function PromotionsFeed({ api, user, isSuperAdmin, onlyOffers, searchDispatch })
                       ))}
                     </select>
                   </div>
-                </>
+                </div>
               )}
 
               <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
@@ -5925,6 +6015,35 @@ function PricingOffersView({ api }) {
         </div>
       </div>
 
+      {!pricingLoading && (
+        <div className="stat-grid three">
+          <div className="stat-card" style={{ animationDelay: '.05s' }}>
+            <div className="stat-top">
+              <div className="icon-badge purple"><IndianRupee /></div>
+              <span className="stat-trend"><Calendar />monthly</span>
+            </div>
+            <div className="stat-num"><CountUp value={Number(monthlyPrice) || 0} prefix="₹" /></div>
+            <div className="stat-label">Monthly Recurring Plan</div>
+          </div>
+          <div className="stat-card" style={{ animationDelay: '.15s' }}>
+            <div className="stat-top">
+              <div className="icon-badge blue"><CalendarRange /></div>
+              <span className="stat-trend"><Calendar />6-month</span>
+            </div>
+            <div className="stat-num"><CountUp value={Number(halfYearlyPrice) || 0} prefix="₹" /></div>
+            <div className="stat-label">Half-Yearly Plan Rate</div>
+          </div>
+          <div className="stat-card" style={{ animationDelay: '.25s' }}>
+            <div className="stat-top">
+              <div className="icon-badge orange"><BadgePercent /></div>
+              <span className="stat-trend"><Calendar />yearly</span>
+            </div>
+            <div className="stat-num"><CountUp value={Number(yearlyPrice) || 0} prefix="₹" /></div>
+            <div className="stat-label">Yearly Discounted Rate</div>
+          </div>
+        </div>
+      )}
+
       <div className="card" style={{ maxWidth: 560, margin: '0 auto' }}>
         <div className="section-title" style={{ marginBottom: 6 }}>
           <h2>Subscription Plan Pricing</h2>
@@ -5939,37 +6058,38 @@ function PricingOffersView({ api }) {
           </div>
         ) : (
           <form onSubmit={handleUpdatePrices}>
-            <div className="field">
-              <label>Monthly Recurring Plan (&#8377;)</label>
-              <div className="input-wrap">
-                <IndianRupee />
-                <input
-                  type="number" required value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)}
-                />
-              </div>
-              <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Monthly recurring rental bill for platform service.</span>
-            </div>
+            <div className="reg-section">
+              <div className="reg-section-head"><div className="reg-num">1</div><h3>Subscription Rates</h3></div>
 
-            <div className="field">
-              <label>6-Month Plan Rate (&#8377;)</label>
-              <div className="input-wrap">
-                <CalendarRange />
-                <input
-                  type="number" required value={halfYearlyPrice} onChange={(e) => setHalfYearlyPrice(e.target.value)}
-                />
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><IndianRupee /></div><b>Monthly Recurring Plan (&#8377;) <span className="req">*</span></b></div>
+                <div className="input-wrap">
+                  <input
+                    type="number" required value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)}
+                  />
+                </div>
+                <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Monthly recurring rental bill for platform service.</span>
               </div>
-              <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Discounted half-yearly upfront rate for shops.</span>
-            </div>
 
-            <div className="field">
-              <label>Yearly Plan Discounted Rate (&#8377;)</label>
-              <div className="input-wrap">
-                <BadgePercent />
-                <input
-                  type="number" required value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)}
-                />
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><CalendarRange /></div><b>6-Month Plan Rate (&#8377;) <span className="req">*</span></b></div>
+                <div className="input-wrap">
+                  <input
+                    type="number" required value={halfYearlyPrice} onChange={(e) => setHalfYearlyPrice(e.target.value)}
+                  />
+                </div>
+                <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Discounted half-yearly upfront rate for shops.</span>
               </div>
-              <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Discounted upfront annual rate for shops.</span>
+
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><BadgePercent /></div><b>Yearly Plan Discounted Rate (&#8377;) <span className="req">*</span></b></div>
+                <div className="input-wrap">
+                  <input
+                    type="number" required value={yearlyPrice} onChange={(e) => setYearlyPrice(e.target.value)}
+                  />
+                </div>
+                <span className="cell-sub" style={{ display: 'block', marginTop: 6 }}>Discounted upfront annual rate for shops.</span>
+              </div>
             </div>
 
             <div className="flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 4 }}>
@@ -6062,7 +6182,7 @@ function RevenueManagementView({ api }) {
         <div className="stat-grid three">
           <div className="stat-card" style={{ animationDelay: '.05s' }}>
             <div className="stat-top">
-              <div className="icon-badge green"><Banknote /></div>
+              <div className="icon-badge jgreen"><Banknote /></div>
               <span className="stat-trend"><TrendingUp />all-time</span>
             </div>
             <div className="stat-num"><CountUp value={totalCollected} decimals={2} prefix="₹" /></div>
@@ -6070,7 +6190,7 @@ function RevenueManagementView({ api }) {
           </div>
           <div className="stat-card" style={{ animationDelay: '.15s' }}>
             <div className="stat-top">
-              <div className="icon-badge"><Calendar /></div>
+              <div className="icon-badge blue"><Calendar /></div>
               <span className="stat-trend"><TrendingUp />{thisYear}</span>
             </div>
             <div className="stat-num"><CountUp value={yearTotal} decimals={2} prefix="₹" /></div>
@@ -6078,7 +6198,7 @@ function RevenueManagementView({ api }) {
           </div>
           <div className="stat-card" style={{ animationDelay: '.25s' }}>
             <div className="stat-top">
-              <div className="icon-badge"><Receipt /></div>
+              <div className="icon-badge orange"><Receipt /></div>
             </div>
             <div className="stat-num"><CountUp value={records.length} /></div>
             <div className="stat-label">Revenue Records &mdash; avg &#8377;{avgPerRecord.toFixed(2)}</div>
@@ -6121,49 +6241,55 @@ function RevenueManagementView({ api }) {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="form-grid">
-              <div className="field">
-                <label>Month</label>
-                <select
-                  className="sel"
-                  value={month} onChange={(e) => setMonth(Number(e.target.value))}
-                >
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {new Date(2000, i).toLocaleString('default', { month: 'long' })}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>Year</label>
-                <div className="input-wrap">
-                  <Calendar />
-                  <input
-                    type="number" required value={year} onChange={(e) => setYear(Number(e.target.value))}
-                  />
+            <div className="reg-section">
+              <div className="reg-section-head"><div className="reg-num">1</div><h3>Collection Period</h3></div>
+
+              <div className="row2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="reg-field" style={{ marginBottom: 0 }}>
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Calendar /></div><b>Month</b></div>
+                  <select
+                    className="sel"
+                    value={month} onChange={(e) => setMonth(Number(e.target.value))}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {new Date(2000, i).toLocaleString('default', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="reg-field" style={{ marginBottom: 0 }}>
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><CalendarRange /></div><b>Year</b></div>
+                  <div className="input-wrap">
+                    <input
+                      type="number" required value={year} onChange={(e) => setYear(Number(e.target.value))}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="field">
-              <label>Amount Collected (&#8377;)</label>
-              <div className="input-wrap">
-                <IndianRupee />
-                <input
-                  type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)}
-                  placeholder="2450.00"
+            <div className="reg-section">
+              <div className="reg-section-head"><div className="reg-num">2</div><h3>Payout Details</h3></div>
+
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><IndianRupee /></div><b>Amount Collected (&#8377;) <span className="req">*</span></b></div>
+                <div className="input-wrap">
+                  <input
+                    type="number" step="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)}
+                    placeholder="2450.00"
+                  />
+                </div>
+              </div>
+
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><FileText /></div><b>Notes / Remarks</b></div>
+                <textarea
+                  rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
+                  placeholder="..."
+                  style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 13, padding: '13px 15px', fontSize: 13.5, outline: 'none', resize: 'vertical' }}
                 />
               </div>
-            </div>
-
-            <div className="field">
-              <label>Notes / Remarks</label>
-              <textarea
-                rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
-                placeholder="..."
-                style={{ width: '100%', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', color: 'var(--text-0)', borderRadius: 13, padding: '13px 15px', fontSize: 13.5, outline: 'none', resize: 'vertical' }}
-              />
             </div>
 
             <button
@@ -6200,19 +6326,26 @@ function RevenueManagementView({ api }) {
               </tr>
             </thead>
             <tbody>
-              {[...records].sort((a, b) => (b.year - a.year) || (b.month - a.month)).map(r => (
-                <tr key={r.id}>
-                  <td>
-                    <div className="cell-primary">
-                      {new Date(2000, r.month - 1).toLocaleString('default', { month: 'long' })} {r.year}
-                    </div>
-                  </td>
-                  <td className="cell-sub" style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
-                    {r.notes || '—'}
-                  </td>
-                  <td className="cell-primary" style={{ color: 'var(--green)' }}>&#8377;{Number(r.amount).toFixed(2)}</td>
-                </tr>
-              ))}
+              {[...records].sort((a, b) => (b.year - a.year) || (b.month - a.month)).map((r, idx) => {
+                const rowColors = ['purple', 'blue', 'pink', 'orange', 'teal', 'jgreen', 'skyblue', 'rose', 'maroon'];
+                const rowColor = rowColors[idx % rowColors.length];
+                return (
+                  <tr key={r.id}>
+                    <td>
+                      <div className="cell-primary" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className={`icon-badge ${rowColor}`} style={{ width: 34, height: 34, borderRadius: 10 }}>
+                          <Receipt className="h-4 w-4" />
+                        </div>
+                        {new Date(2000, r.month - 1).toLocaleString('default', { month: 'long' })} {r.year}
+                      </div>
+                    </td>
+                    <td className="cell-sub" style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
+                      {r.notes || '—'}
+                    </td>
+                    <td className="cell-primary" style={{ color: 'var(--green)' }}>&#8377;{Number(r.amount).toFixed(2)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -6304,19 +6437,23 @@ function KeysSearchView({ api, searchDispatch }) {
         </div>
       </div>
 
-      <div className="card" style={{ display: 'flex', alignItems: 'center', padding: 0, marginBottom: 'clamp(16px, 4vw, 24px)' }}>
-        <div className="search-box" style={{ width: '100%', minWidth: 0, border: 'none', background: 'transparent', padding: 'clamp(12px, 3vw, 18px) clamp(14px, 3vw, 22px)' }}>
-          <Search />
-          <input
-            type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by key code, vehicle number, customer location, category&hellip;"
-            style={{ fontSize: 14, minWidth: 0 }}
-          />
-          {query && (
-            <button onClick={() => setQuery('')} className="icon-btn" style={{ width: 26, height: 26 }}>
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+      <div className="reg-section" style={{ marginBottom: 'clamp(16px, 4vw, 24px)' }}>
+        <div className="reg-section-head"><div className="reg-num">1</div><h3>Search Registry</h3></div>
+        <div className="reg-field" style={{ marginBottom: 0 }}>
+          <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><Search /></div><b>Key Code, Vehicle No, or Category</b></div>
+          <div className="search-box" style={{ width: '100%', minWidth: 0, background: 'var(--card-2)' }}>
+            <Search />
+            <input
+              type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by key code, vehicle number, customer location, category&hellip;"
+              style={{ fontSize: 14, minWidth: 0 }}
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="icon-btn" style={{ width: 26, height: 26 }}>
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -6327,42 +6464,51 @@ function KeysSearchView({ api, searchDispatch }) {
         </div>
       ) : results.length === 0 ? (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 220 }}>
-          <div className="icon-badge"><KeyRound /></div>
+          <div className="icon-badge rose"><KeyRound /></div>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-2)' }}>No matching keys or customer records found</span>
         </div>
       ) : (
         <div className="product-grid stagger-in">
-          {results.map(r => (
-            <div
-              key={r.id} onClick={() => setSelectedResult(r)}
-              className="product-card"
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="product-img">
-                <KeyRound />
-                <span className="product-tag">{r.keySpec.category}</span>
-              </div>
-              <div className="product-body">
-                <div className="flex items-center justify-between" style={{ gap: 8 }}>
-                  <span className="pname" style={{ minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{r.keySpec.keyNumber}</span>
-                  <span className="pcat" style={{ marginBottom: 0, flexShrink: 0 }}>{r.keySpec.category}</span>
+          {(() => {
+            const resultAccents = ['var(--purple)', 'var(--pink)', 'var(--blue)', 'var(--orange)', 'var(--teal)', 'var(--skyblue)', 'var(--rose)', 'var(--jgreen)'];
+            return results.map((r, idx) => (
+              <div
+                key={r.id} onClick={() => setSelectedResult(r)}
+                className="product-card"
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="product-img" style={{ background: r.customer ? 'linear-gradient(135deg, var(--maroon), var(--maroon-dark))' : resultAccents[idx % resultAccents.length] }}>
+                  <KeyRound style={{ color: '#ffffff' }} />
+                  <span className="product-tag">{r.keySpec.category}</span>
                 </div>
-                {r.customer && (
-                  <div className="space-y-1">
-                    <span className="badge badge-active"><span className="dot" />Registered Customer Key</span>
-                    <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 12, padding: 8, marginTop: 4 }}>
-                      <p style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>Customer: <strong style={{ color: 'var(--text-0)' }}>{r.customer.name}</strong></p>
-                      <p style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, marginTop: 2 }}>Vehicle No: <strong style={{ color: 'var(--green)' }}>{r.customer.vehicleNumber || 'N/A'}</strong></p>
-                    </div>
+                <div className="product-body">
+                  <div className="flex items-center justify-between" style={{ gap: 8 }}>
+                    <span className="pname" style={{ minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{r.keySpec.keyNumber}</span>
+                    <span className="pcat" style={{ marginBottom: 0, flexShrink: 0 }}>{r.keySpec.category}</span>
                   </div>
-                )}
-                <div className="product-foot" style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--gold)' }}>View Full Details</span>
-                  <ExternalLink style={{ width: 13, height: 13, color: 'var(--gold)' }} />
+                  {r.customer && (
+                    <div className="space-y-1">
+                      <span className="badge badge-active"><span className="dot" />Registered Customer Key</span>
+                      <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 12, padding: 8, marginTop: 4 }}>
+                        <div className="flex items-center gap-2">
+                          <div className="icon-badge jgreen" style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0 }}><Users style={{ width: 10, height: 10 }} /></div>
+                          <p style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>Customer: <strong style={{ color: 'var(--text-0)' }}>{r.customer.name}</strong></p>
+                        </div>
+                        <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+                          <div className="icon-badge skyblue" style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0 }}><Car style={{ width: 10, height: 10 }} /></div>
+                          <p style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600 }}>Vehicle No: <strong style={{ color: 'var(--green)' }}>{r.customer.vehicleNumber || 'N/A'}</strong></p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="product-foot" style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--gold)' }}>View Full Details</span>
+                    <ExternalLink style={{ width: 13, height: 13, color: 'var(--gold)' }} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       )}
 
@@ -6380,50 +6526,53 @@ function KeysSearchView({ api, searchDispatch }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-xs font-semibold" style={{ marginBottom: 18 }}>
-              <div>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Lock Category</span>
-                <span style={{ color: 'var(--text-0)' }}>{selectedResult.keySpec.category}</span>
+            <div className="reg-section">
+              <div className="reg-section-head"><div className="reg-num">1</div><h3>Key Specification</h3></div>
+              <div className="reg-field" style={{ marginBottom: selectedResult.keySpec.backImageUrl ? 13 : 0 }}>
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Tag /></div><b>Lock Category</b></div>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-0)' }}>{selectedResult.keySpec.category}</span>
               </div>
-            </div>
 
-            {selectedResult.keySpec.backImageUrl && (
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Back Profile</span>
-                <img src={selectedResult.keySpec.backImageUrl} alt="Back profile" style={{ width: '100%', height: 128, borderRadius: 12, border: '1px solid var(--border-2)' }} className="object-cover" />
-              </div>
-            )}
+              {selectedResult.keySpec.backImageUrl && (
+                <div className="reg-field" style={{ marginBottom: 0 }}>
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><ImageIcon /></div><b>Back Profile</b></div>
+                  <img src={selectedResult.keySpec.backImageUrl} alt="Back profile" style={{ width: '100%', height: 128, borderRadius: 12, border: '1px solid var(--border-2)' }} className="object-cover" />
+                </div>
+              )}
+            </div>
 
             {/* ASSOCIATED CUSTOMER REGISTRY SECTION */}
             {selectedResult.customer && (
-              <div style={{ borderTop: '1px solid rgba(240,185,11,0.2)', paddingTop: 16 }} className="space-y-3">
-                <h3 style={{ fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--green)' }}>Associated Customer Compliance Record</h3>
+              <div className="reg-section" style={{ marginBottom: 0 }}>
+                <div className="reg-section-head"><div className="reg-num">2</div><h3>Associated Customer Compliance Record</h3></div>
 
                 {(user?.role === 'SUPER_ADMIN' || selectedResult.customer.shopId === user?.shopId) ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4" style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 14, borderRadius: 14 }}>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Customer Name</span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><User /></div><b>Customer Name</b></div>
                         <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.name}</span>
                       </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Phone Number</span>
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><Phone /></div><b>Phone Number</b></div>
                         <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.phone}</span>
                       </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Vehicle Number</span>
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Car /></div><b>Vehicle Number</b></div>
                         <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.vehicleNumber || 'N/A'}</span>
                       </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Registry Date</span>
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Calendar /></div><b>Registry Date</b></div>
                         <span style={{ color: 'var(--text-1)', fontWeight: 600, fontSize: 12.5 }}>{new Date(selectedResult.customer.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
 
-                    <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 14, borderRadius: 14, marginTop: 12 }}>
+                    <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 14, borderRadius: 14, marginTop: 4 }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <MapPin style={{ width: 18, height: 18, color: selectedResult.customer.latitude ? 'var(--green)' : 'var(--text-3)', flexShrink: 0 }} />
+                          <div className={`icon-badge ${selectedResult.customer.latitude ? 'jgreen' : 'rose'}`} style={{ width: 32, height: 32, borderRadius: 10 }}>
+                            <MapPin style={{ width: 16, height: 16 }} />
+                          </div>
                           <div>
                             <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
                             {selectedResult.customer.latitude && selectedResult.customer.longitude ? (
@@ -6440,47 +6589,48 @@ function KeysSearchView({ api, searchDispatch }) {
                         )}
                       </div>
                       {selectedResult.customer.capturedAddress && (
-                        <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 26, fontWeight: 600 }}>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 42, fontWeight: 600 }}>
                           <span style={{ display: 'block', fontWeight: 800, fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase' }}>Captured Address</span>
                           <span>{selectedResult.customer.capturedAddress}</span>
                         </div>
                       )}
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800, marginBottom: 6 }}>Webcam Snapshot</span>
-                        {selectedResult.customer.photoUrl ? (
-                          <div style={{ width: '100%', height: 96, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
-                            <img src={getAssetUrl(selectedResult.customer.photoUrl)} alt="Customer" className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div style={{ width: '100%', height: 96, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
-                            <Camera style={{ width: 16, height: 16, color: 'var(--text-3)' }} />
-                          </div>
-                        )}
-                      </div>
+                    <div className="reg-field" style={{ marginTop: 13, marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><Camera /></div><b>Webcam Snapshot</b></div>
+                      {selectedResult.customer.photoUrl ? (
+                        <div style={{ width: '100%', height: 96, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
+                          <img src={getAssetUrl(selectedResult.customer.photoUrl)} alt="Customer" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div style={{ width: '100%', height: 96, borderRadius: 12, border: '1.5px dashed var(--border-2)' }} className="flex items-center justify-center">
+                          <Camera style={{ width: 16, height: 16, color: 'var(--text-3)' }} />
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
                   <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 16, borderRadius: 16 }} className="space-y-3">
-                    <p style={{ fontSize: 10.5, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 800 }}>Registry Location Overview (Other Workspace)</p>
+                    <div className="flex items-center gap-2">
+                      <div className="icon-badge maroon" style={{ width: 24, height: 24, borderRadius: 7 }}><ShieldCheck style={{ width: 12, height: 12 }} /></div>
+                      <p style={{ fontSize: 10.5, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 800 }}>Registry Location Overview (Other Workspace)</p>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Customer Name</span>
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><User /></div><b>Customer Name</b></div>
                         <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.name}</span>
                       </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Customer Mobile</span>
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><Phone /></div><b>Customer Mobile</b></div>
                         <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: 12.5, fontFamily: 'monospace' }}>{selectedResult.customer.phone}</span>
                       </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Registered Shop</span>
+                      <div className="reg-field">
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Store /></div><b>Registered Shop</b></div>
                         <span style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 12.5 }}>{selectedResult.customer.shop?.name || 'Key Shop Workspace'}</span>
                       </div>
-                      <div>
-                        <span style={{ fontSize: 9, color: 'var(--text-3)', display: 'block', textTransform: 'uppercase', fontWeight: 800 }}>Shop Mobile</span>
+                      <div className="reg-field" style={{ marginBottom: 0 }}>
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Shop Mobile</b></div>
                         <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: 12.5, fontFamily: 'monospace' }}>
                           {(() => {
                             let shopMobile = 'N/A';
@@ -6659,8 +6809,24 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
       if (matchedState) {
         setStateVal(matchedState);
         const list = INDIAN_STATES_DISTRICTS[matchedState] || [];
-        const matchedDistrict = list.find(dt => dt.toLowerCase() === (data.district || data.city || '').toLowerCase());
-        setDistrict(matchedDistrict || list[0] || district);
+        // Nominatim's district name often carries a "District"/"Taluk"/
+        // "Tehsil" suffix (e.g. "Chennai District") that our district list
+        // doesn't, so strip that before comparing. Try an exact match first,
+        // then fall back to a loose substring match (handles minor naming
+        // differences like "Bengaluru" vs "Bengaluru Urban"). Previously
+        // this fell back to `list[0]` (the alphabetically-first district in
+        // the state) whenever nothing matched, which silently populated a
+        // wrong district instead of leaving the field for the user to
+        // confirm/correct - removed that fallback.
+        const rawDistrict = (data.district || data.city || '')
+          .replace(/\s+(district|taluk|tehsil|mandal)$/i, '')
+          .trim()
+          .toLowerCase();
+        const matchedDistrict = rawDistrict
+          ? list.find(dt => dt.toLowerCase() === rawDistrict)
+            || list.find(dt => dt.toLowerCase().includes(rawDistrict) || rawDistrict.includes(dt.toLowerCase()))
+          : null;
+        if (matchedDistrict) setDistrict(matchedDistrict);
       }
       // Nominatim's display_name is already a fully formatted address
       // (street, locality, city, state, postcode, country in order) - use it
@@ -6968,20 +7134,20 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
               <p className="desc">Register the customer's contact details, vehicle &amp; key code, and residential address.</p>
 
               {superAdminMode && (
-                <div className="field full" style={{ marginBottom: 20 }}>
-                  <label>Shop</label>
-                  <div className="input-wrap">
-                    <Store />
-                    <select required value={selectedShopId} onChange={(e) => setSelectedShopId(e.target.value)}>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">1</div><h3>Shop Assignment</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><Store /></div><b>Shop <span className="req">*</span></b></div>
+                    <select className="sel" required value={selectedShopId} onChange={(e) => setSelectedShopId(e.target.value)}>
                       <option value="">Select a shop&hellip;</option>
                       {shops.map(s => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
+                    <p style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginTop: 8 }}>
+                      This customer, and its key code, will be registered under the selected shop's workspace.
+                    </p>
                   </div>
-                  <p style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginTop: 6 }}>
-                    This customer, and its key code, will be registered under the selected shop's workspace.
-                  </p>
                 </div>
               )}
 
@@ -6997,26 +7163,29 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
                 </div>
               )}
 
-              <div className="form-grid">
-                <div className="field">
-                  <label>Full Customer Name</label>
-                  <div className="input-wrap">
-                    <User />
-                    <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Rohan Malhotra" />
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">{superAdminMode ? 2 : 1}</div><h3>Customer &amp; Vehicle</h3></div>
+                <div className="form-grid">
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><User /></div><b>Full Customer Name <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Rohan Malhotra" />
+                    </div>
+                  </div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Car /></div><b>Vehicle Number <span className="req">*</span></b></div>
+                    <div className="input-wrap">
+                      <input type="text" required value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())} placeholder="e.g. TN09B1234" />
+                    </div>
                   </div>
                 </div>
-                <div className="field">
-                  <label>Vehicle Number</label>
-                  <div className="input-wrap">
-                    <Car />
-                    <input type="text" required value={vehicleNumber} onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())} placeholder="e.g. TN09B1234" />
-                  </div>
-                </div>
+              </div>
 
-                <div className="field">
-                  <label>Key Code / Key Number</label>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">{superAdminMode ? 3 : 2}</div><h3>Key &amp; Contact</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><KeyRound /></div><b>Key Code / Key Number <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <KeyRound />
                     <input
                       type="text" required value={keyNumber}
                       onChange={(e) => { setKeyNumber(e.target.value); setDuplicateKeyWarning(false); }}
@@ -7024,11 +7193,10 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
                     />
                   </div>
                 </div>
-                <div className="field">
-                  <label>Phone Number</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Phone /></div><b>Phone Number <span className="req">*</span></b></div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <div className="input-wrap" style={{ flex: 1 }}>
-                      <Phone />
                       <input
                         type="tel" required value={phone}
                         onChange={(e) => { setPhone(e.target.value); setOtpVerified(false); setOtpSent(false); setOtpDevCode(''); }}
@@ -7069,23 +7237,25 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
                     </div>
                   )}
                 </div>
+              </div>
 
-                <div className="field full">
-                  <div className="flex justify-between items-center mb-2">
-                    <label style={{ marginBottom: 0 }}>Address Line</label>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">{superAdminMode ? 4 : 3}</div><h3>Address &amp; Location</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label">
+                    <div className="reg-ico" style={{ background: 'var(--teal)' }}><MapPin /></div>
+                    <b>Address Line <span className="req">*</span></b>
                     <button
                       type="button"
                       onClick={captureCustomerLocation}
                       disabled={isCapturingGps}
-                      className="flex items-center gap-1 cursor-pointer select-none"
-                      style={{ fontSize: 10, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0 }}
+                      className="reg-trailing loc-btn"
                     >
-                      <Crosshair className={isCapturingGps ? 'animate-spin' : ''} style={{ width: 12, height: 12 }} />
+                      <Crosshair className={isCapturingGps ? 'animate-spin' : ''} />
                       <span>{isCapturingGps ? 'Locating…' : 'Current Location'}</span>
                     </button>
                   </div>
                   <div className="input-wrap">
-                    <MapPin />
                     <input type="text" required value={addressLine} onChange={(e) => setAddressLine(e.target.value)} placeholder="e.g. Flat 101, Park Avenue" />
                   </div>
                   {gpsError && (
@@ -7118,34 +7288,35 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
                   )}
                 </div>
 
-                <div className="field">
-                  <label>State</label>
-                  <select
-                    className="sel" value={stateVal}
-                    onChange={(e) => {
-                      const selected = e.target.value;
-                      setStateVal(selected);
-                      const list = INDIAN_STATES_DISTRICTS[selected] || [];
-                      setDistrict(list[0] || '');
-                    }}
-                  >
-                    {Object.keys(INDIAN_STATES_DISTRICTS).map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
+                <div className="form-grid" style={{ marginBottom: 13 }}>
+                  <div className="reg-field" style={{ marginBottom: 0 }}>
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Navigation /></div><b>State</b></div>
+                    <select
+                      className="sel" value={stateVal}
+                      onChange={(e) => {
+                        const selected = e.target.value;
+                        setStateVal(selected);
+                        const list = INDIAN_STATES_DISTRICTS[selected] || [];
+                        setDistrict(list[0] || '');
+                      }}
+                    >
+                      {Object.keys(INDIAN_STATES_DISTRICTS).map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="reg-field" style={{ marginBottom: 0 }}>
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><MapPin /></div><b>District</b></div>
+                    <select className="sel" value={district} onChange={(e) => setDistrict(e.target.value)}>
+                      {(INDIAN_STATES_DISTRICTS[stateVal] || []).map(dt => (
+                        <option key={dt} value={dt}>{dt}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="field">
-                  <label>District</label>
-                  <select className="sel" value={district} onChange={(e) => setDistrict(e.target.value)}>
-                    {(INDIAN_STATES_DISTRICTS[stateVal] || []).map(dt => (
-                      <option key={dt} value={dt}>{dt}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field full">
-                  <label>Country</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><Building2 /></div><b>Country</b></div>
                   <div className="input-wrap" style={{ opacity: 0.65 }}>
-                    <Building2 />
                     <input type="text" readOnly value={country} style={{ cursor: 'not-allowed' }} />
                   </div>
                 </div>
@@ -7195,56 +7366,59 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
               <h3>Identity Photo Capture</h3>
               <p className="desc">Capture a live photo via webcam, or upload an existing image for the compliance record.</p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22 }}>
-                <div className="capture-preview" style={{ width: 260, height: 200, borderRadius: 20, overflow: 'hidden', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {isWebcamActive ? (
-                    <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : photoBase64 ? (
-                    <img src={photoBase64} alt="Identity preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <div className="icon-badge" style={{ width: 56, height: 56, borderRadius: 16 }}><Camera className="h-6 w-6" /></div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%' }}>
-                  {isWebcamActive ? (
-                    <>
-                      <button type="button" onClick={captureSnapshot} className="btn btn-primary btn-sm">
-                        <Camera className="h-4 w-4" /> Capture Photo
-                      </button>
-                      <button type="button" onClick={stopWebcam} className="btn btn-danger-outline btn-sm">
-                        <X className="h-4 w-4" /> Stop Camera
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button type="button" onClick={startWebcam} className="btn btn-outline btn-sm">
-                        <Camera className="h-4 w-4" /> {photoBase64 ? 'Re-take Photo' : 'Start Webcam / Mobile Cam'}
-                      </button>
-                      <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
-                        <UploadCloud className="h-4 w-4" />
-                        <span>Upload Image</span>
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onClick={primeStoragePermission} onChange={handlePhotoUpload} />
-                      </label>
-                    </>
-                  )}
-                </div>
-
-                {camError && (
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700 }}>{camError}</p>
-                    {camErrorKind === 'permission' && IS_NATIVE_APP && (
-                      <button
-                        type="button"
-                        onClick={openAppSettings}
-                        className="cursor-pointer select-none"
-                        style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', marginTop: 2 }}
-                      >
-                        Open App Settings
-                      </button>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Live Photo Capture</h3></div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22 }}>
+                  <div className="capture-preview" style={{ width: 260, height: 200, borderRadius: 20, overflow: 'hidden', background: 'var(--card-2)', border: '1.5px solid var(--border-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isWebcamActive ? (
+                      <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : photoBase64 ? (
+                      <img src={photoBase64} alt="Identity preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="icon-badge pink" style={{ width: 56, height: 56, borderRadius: 16 }}><Camera className="h-6 w-6" /></div>
                     )}
                   </div>
-                )}
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%' }}>
+                    {isWebcamActive ? (
+                      <>
+                        <button type="button" onClick={captureSnapshot} className="btn btn-primary btn-sm">
+                          <Camera className="h-4 w-4" /> Capture Photo
+                        </button>
+                        <button type="button" onClick={stopWebcam} className="btn btn-danger-outline btn-sm">
+                          <X className="h-4 w-4" /> Stop Camera
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={startWebcam} className="btn btn-outline btn-sm">
+                          <Camera className="h-4 w-4" /> {photoBase64 ? 'Re-take Photo' : 'Start Webcam / Mobile Cam'}
+                        </button>
+                        <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                          <UploadCloud className="h-4 w-4" />
+                          <span>Upload Image</span>
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onClick={primeStoragePermission} onChange={handlePhotoUpload} />
+                        </label>
+                      </>
+                    )}
+                  </div>
+
+                  {camError && (
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: 11, color: 'var(--amber)', fontWeight: 700 }}>{camError}</p>
+                      {camErrorKind === 'permission' && IS_NATIVE_APP && (
+                        <button
+                          type="button"
+                          onClick={openAppSettings}
+                          className="cursor-pointer select-none"
+                          style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800, background: 'none', border: 'none', padding: 0, textDecoration: 'underline', marginTop: 2 }}
+                        >
+                          Open App Settings
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -7254,38 +7428,51 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
               <h3>Compliance Document Upload</h3>
               <p className="desc">Upload a copy of the government ID proof used to verify this customer.</p>
 
-              <div className="field">
-                <label>Document Type</label>
-                <select className="sel" value={idProofType} onChange={(e) => setIdProofType(e.target.value)}>
-                  <option value="Aadhaar Card" disabled={uploadedDocs.some(d => d.type === 'Aadhaar Card')}>Aadhaar Card</option>
-                  <option value="Driving License" disabled={uploadedDocs.some(d => d.type === 'Driving License')}>Driving License</option>
-                  <option value="PAN Card" disabled={uploadedDocs.some(d => d.type === 'PAN Card')}>PAN Card</option>
-                  <option value="Voter ID" disabled={uploadedDocs.some(d => d.type === 'Voter ID')}>Voter ID</option>
-                </select>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Document Type</h3></div>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><FileCheck /></div><b>Document Type</b></div>
+                  <select className="sel" value={idProofType} onChange={(e) => setIdProofType(e.target.value)}>
+                    <option value="Aadhaar Card" disabled={uploadedDocs.some(d => d.type === 'Aadhaar Card')}>Aadhaar Card</option>
+                    <option value="Driving License" disabled={uploadedDocs.some(d => d.type === 'Driving License')}>Driving License</option>
+                    <option value="PAN Card" disabled={uploadedDocs.some(d => d.type === 'PAN Card')}>PAN Card</option>
+                    <option value="Voter ID" disabled={uploadedDocs.some(d => d.type === 'Voter ID')}>Voter ID</option>
+                  </select>
+                </div>
               </div>
 
-              <label htmlFor="docUploadInput" className="dropzone" style={{ marginTop: 18 }}>
-                <div className="icon-badge"><UploadCloud className="h-5 w-5" /></div>
-                <div className="dz-title">Drop or browse a copy of {idProofType}</div>
-                <div className="dz-sub">JPEG, PNG or PDF — up to 5MB</div>
-                <input type="file" id="docUploadInput" onClick={primeStoragePermission} onChange={handleFileChange} style={{ display: 'none' }} accept="image/jpeg, image/png, application/pdf" />
-              </label>
-              {uploadError && <p style={{ color: 'var(--red)', fontSize: 12, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{uploadError}</p>}
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">2</div><h3>Upload Copy</h3></div>
+                <label htmlFor="docUploadInput" className="dropzone">
+                  <div className="icon-badge orange"><UploadCloud className="h-5 w-5" /></div>
+                  <div className="dz-title">Drop or browse a copy of {idProofType}</div>
+                  <div className="dz-sub">JPEG, PNG or PDF — up to 5MB</div>
+                  <input type="file" id="docUploadInput" onClick={primeStoragePermission} onChange={handleFileChange} style={{ display: 'none' }} accept="image/jpeg, image/png, application/pdf" />
+                </label>
+                {uploadError && <p style={{ color: 'var(--red)', fontSize: 12, fontWeight: 700, marginTop: 12, textAlign: 'center' }}>{uploadError}</p>}
 
-              {uploadedDocs.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
-                  <span className="side-section-label" style={{ padding: 0 }}>Staged ID copies ({uploadedDocs.length})</span>
-                  {uploadedDocs.map((doc, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 13, padding: '12px 16px' }}>
-                      <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 12.5, fontFamily: 'var(--display)' }}>{doc.type}</span>
-                      <span style={{ color: 'var(--text-3)', fontSize: 12, fontWeight: 600, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.file.name}</span>
-                      <button type="button" onClick={() => setUploadedDocs(uploadedDocs.filter((_, i) => i !== idx))} className="icon-btn">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                {uploadedDocs.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 }}>
+                    <span className="side-section-label" style={{ padding: 0 }}>Staged ID copies ({uploadedDocs.length})</span>
+                    {uploadedDocs.map((doc, idx) => {
+                      const docColors = ['purple', 'pink', 'blue', 'orange', 'teal', 'skyblue', 'rose', 'jgreen'];
+                      const docColor = docColors[idx % docColors.length];
+                      return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 13, padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div className={`icon-badge ${docColor}`} style={{ width: 26, height: 26, borderRadius: 8 }}><FileCheck style={{ width: 13, height: 13 }} /></div>
+                            <span style={{ color: 'var(--gold)', fontWeight: 800, fontSize: 12.5, fontFamily: 'var(--display)' }}>{doc.type}</span>
+                          </div>
+                          <span style={{ color: 'var(--text-3)', fontSize: 12, fontWeight: 600, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.file.name}</span>
+                          <button type="button" onClick={() => setUploadedDocs(uploadedDocs.filter((_, i) => i !== idx))} className="icon-btn">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -7294,17 +7481,65 @@ function CustomerRegistrationWizard({ t, api, superAdminMode = false, shops = []
               <h3>Review</h3>
               <p className="desc">Verify every detail entered below before submitting this compliance registration. Nothing is captured or modified automatically on this step.</p>
 
-              <div className="form-grid" style={{ paddingBottom: 22, marginBottom: 22, borderBottom: '1px solid var(--border)' }}>
-                <div className="field"><label>Customer</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{name}</div></div>
-                <div className="field"><label>Phone</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{phone}</div></div>
-                <div className="field"><label>Vehicle Number</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{vehicleNumber}</div></div>
-                <div className="field"><label>Key Blank</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{keyNumber}</div></div>
-                <div className="field full"><label>Registered Address</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{addressLine}, {district}, {stateVal}, India</div></div>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">1</div><h3>Customer &amp; Key</h3></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="icon-badge purple" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><User style={{ width: 16, height: 16 }} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>Customer</div>
+                      <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{name}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="icon-badge blue" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><Phone style={{ width: 16, height: 16 }} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>Phone</div>
+                      <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{phone}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="icon-badge orange" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><Car style={{ width: 16, height: 16 }} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>Vehicle Number</div>
+                      <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{vehicleNumber}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="icon-badge pink" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><KeyRound style={{ width: 16, height: 16 }} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>Key Blank</div>
+                      <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{keyNumber}</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3" style={{ marginTop: 16 }}>
+                  <div className="icon-badge teal" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><MapPin style={{ width: 16, height: 16 }} /></div>
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>Registered Address</div>
+                    <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{addressLine}, {district}, {stateVal}, India</div>
+                  </div>
+                </div>
               </div>
 
-              <div className="form-grid" style={{ paddingBottom: 22, marginBottom: 22, borderBottom: '1px solid var(--border)' }}>
-                <div className="field"><label>ID Proof Type</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{idProofType}</div></div>
-                <div className="field"><label>Uploaded Documents</label><div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 14 }}>{uploadedDocs.length > 0 ? `${uploadedDocs.length} file(s) attached` : 'None attached'}</div></div>
+              <div className="reg-section">
+                <div className="reg-section-head"><div className="reg-num">2</div><h3>Compliance Documents</h3></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="icon-badge skyblue" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><Fingerprint style={{ width: 16, height: 16 }} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>ID Proof Type</div>
+                      <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{idProofType}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="icon-badge rose" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0 }}><FileCheck style={{ width: 16, height: 16 }} /></div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em' }}>Uploaded Documents</div>
+                      <div style={{ color: 'var(--text-0)', fontWeight: 700, fontSize: 13.5 }}>{uploadedDocs.length > 0 ? `${uploadedDocs.length} file(s) attached` : 'None attached'}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <span className="side-section-label" style={{ padding: 0, display: 'block', marginBottom: 12 }}>Location</span>
@@ -7536,32 +7771,43 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
             </tr>
           </thead>
           <tbody>
-            {customers.map(c => (
-              <tr key={c.id} onClick={() => setSelectedCust(c)} style={{ cursor: 'pointer' }}>
-                <td data-label="Customer">
-                  <div className="cell-primary">{c.name}</div>
-                </td>
-                <td className="cell-sub" data-label="Phone" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
-                <td className="cell-sub" data-label="Vehicle" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.vehicleNumber || 'N/A'}</td>
-                <td data-label="Key Code">
-                  <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
-                </td>
-                <td className="cell-sub" data-label="Location" style={{ fontWeight: 700, color: 'var(--text-2)', maxWidth: 180 }}>
-                  <span className="flex items-center gap-1" style={{ overflow: 'hidden' }}>
-                    <MapPin style={{ width: 13, height: 13, color: 'var(--green)', flexShrink: 0 }} />
-                    <span className="truncate">{c.capturedAddress || 'N/A'}</span>
-                  </span>
-                </td>
-                <td className="cell-sub" data-label="Logged" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
-                <td data-label="Actions">
-                  <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                    <button onClick={(e) => { e.stopPropagation(); setSelectedCust(c); }} className="icon-btn" title="View compliance file">
-                      <Eye />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {(() => {
+              const rowColors = ['purple', 'blue', 'pink', 'orange', 'teal', 'jgreen', 'skyblue', 'rose', 'maroon'];
+              return customers.map((c, idx) => {
+                const rowColor = rowColors[idx % rowColors.length];
+                return (
+                  <tr key={c.id} onClick={() => setSelectedCust(c)} style={{ cursor: 'pointer' }}>
+                    <td data-label="Customer">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className={`icon-badge ${rowColor}`} style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0 }}>
+                          <User style={{ width: 15, height: 15 }} />
+                        </div>
+                        <div className="cell-primary">{c.name}</div>
+                      </div>
+                    </td>
+                    <td className="cell-sub" data-label="Phone" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.phone}</td>
+                    <td className="cell-sub" data-label="Vehicle" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{c.vehicleNumber || 'N/A'}</td>
+                    <td data-label="Key Code">
+                      <span className="badge badge-active"><span className="dot" />{c.keyNumber}</span>
+                    </td>
+                    <td className="cell-sub" data-label="Location" style={{ fontWeight: 700, color: 'var(--text-2)', maxWidth: 180 }}>
+                      <span className="flex items-center gap-1" style={{ overflow: 'hidden' }}>
+                        <MapPin style={{ width: 13, height: 13, color: 'var(--green)', flexShrink: 0 }} />
+                        <span className="truncate">{c.capturedAddress || 'N/A'}</span>
+                      </span>
+                    </td>
+                    <td className="cell-sub" data-label="Logged" style={{ fontWeight: 700, color: 'var(--text-2)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                    <td data-label="Actions">
+                      <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedCust(c); }} className="icon-btn" title="View compliance file">
+                          <Eye />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              });
+            })()}
           </tbody>
         </table>
         )}
@@ -7582,55 +7828,64 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
 
             {!isEditing ? (
               <>
-                <div className="grid grid-cols-2 gap-4 text-xs font-semibold" style={{ marginBottom: 18 }}>
-                  <div>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Phone Contact</span>
-                    <span style={{ color: 'var(--text-0)' }}>{selectedCust.phone}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Registry Date</span>
-                    <span style={{ color: 'var(--text-0)' }}>{new Date(selectedCust.createdAt).toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Vehicle Number</span>
-                    <span style={{ color: 'var(--text-0)' }}>{selectedCust.vehicleNumber || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 3 }}>Key Blank Code</span>
-                    <span className="badge badge-active"><span className="dot" />{selectedCust.keyNumber}</span>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">1</div><h3>Contact &amp; Identity</h3></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Phone /></div><b>Phone Contact</b></div>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }}>{selectedCust.phone}</span>
+                    </div>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Calendar /></div><b>Registry Date</b></div>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }}>{new Date(selectedCust.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><Car /></div><b>Vehicle Number</b></div>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-0)' }}>{selectedCust.vehicleNumber || 'N/A'}</span>
+                    </div>
+                    <div className="reg-field" style={{ marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><KeyRound /></div><b>Key Blank Code</b></div>
+                      <span className="badge badge-active"><span className="dot" />{selectedCust.keyNumber}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 14, marginBottom: 18 }}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin style={{ width: 18, height: 18, color: selectedCust.latitude ? 'var(--green)' : 'var(--text-3)', flexShrink: 0 }} />
-                      <div>
-                        <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
-                        {selectedCust.latitude && selectedCust.longitude ? (
-                          <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {selectedCust.latitude} &bull; Long: {selectedCust.longitude}</p>
-                        ) : (
-                          <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
-                        )}
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">2</div><h3>Location Verification</h3></div>
+                  <div style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 16, padding: 14 }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`icon-badge ${selectedCust.latitude ? 'jgreen' : 'rose'}`} style={{ width: 32, height: 32, borderRadius: 10 }}>
+                          <MapPin style={{ width: 16, height: 16 }} />
+                        </div>
+                        <div>
+                          <p style={{ fontWeight: 700, color: 'var(--text-0)', fontSize: 13 }}>GPS Coordinates</p>
+                          {selectedCust.latitude && selectedCust.longitude ? (
+                            <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600 }}>Lat: {selectedCust.latitude} &bull; Long: {selectedCust.longitude}</p>
+                          ) : (
+                            <p style={{ fontSize: 10.5, color: 'var(--text-3)', marginTop: 2, fontWeight: 600, fontStyle: 'italic' }}>Not captured</p>
+                          )}
+                        </div>
                       </div>
+                      {selectedCust.mapsLink && (
+                        <a href={selectedCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
+                          <span>Google Maps</span><ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
                     </div>
-                    {selectedCust.mapsLink && (
-                      <a href={selectedCust.mapsLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: 'var(--gold)', fontWeight: 800 }} className="flex items-center gap-1 hover:underline">
-                        <span>Google Maps</span><ExternalLink className="h-3 w-3" />
-                      </a>
+                    {selectedCust.capturedAddress && (
+                      <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 42, fontWeight: 600 }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase' }}>Captured Address</span>
+                        <span>{selectedCust.capturedAddress}</span>
+                      </div>
                     )}
                   </div>
-                  {selectedCust.capturedAddress && (
-                    <div style={{ fontSize: 10.5, color: 'var(--text-2)', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, paddingLeft: 26, fontWeight: 600 }}>
-                      <span style={{ display: 'block', fontWeight: 800, fontSize: 9, color: 'var(--text-3)', textTransform: 'uppercase' }}>Captured Address</span>
-                      <span>{selectedCust.capturedAddress}</span>
-                    </div>
-                  )}
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 18 }}>
-                  <div>
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 6 }}>Webcam Photo</span>
+                <div className="reg-section" style={{ marginBottom: 0 }}>
+                  <div className="reg-section-head"><div className="reg-num">3</div><h3>Documents &amp; Photo</h3></div>
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Camera /></div><b>Webcam Photo</b></div>
                     {selectedCust.photoUrl ? (
                       <div style={{ width: '100%', height: 128, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-2)' }}>
                         <img src={getAssetUrl(selectedCust.photoUrl)} alt="Customer snapshot" className="w-full h-full object-cover" />
@@ -7641,26 +7896,35 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
                       </div>
                     )}
                   </div>
-                </div>
 
-                {selectedCust.documents && selectedCust.documents.length > 0 && (
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 4 }} className="space-y-2">
-                    <span style={{ fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', fontWeight: 800, display: 'block', marginBottom: 4 }}>Attached ID Copies</span>
-                    {selectedCust.documents.map(d => (
-                      <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
-                        <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
-                        <button
-                          type="button"
-                          onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')}
-                          style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }}
-                          className="hover:underline"
-                        >
-                          Download
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  {selectedCust.documents && selectedCust.documents.length > 0 && (
+                    <div className="reg-field space-y-2" style={{ marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><FileCheck /></div><b>Attached ID Copies</b></div>
+                      {selectedCust.documents.map((d, di) => {
+                        const docColors = ['purple', 'pink', 'blue', 'orange', 'teal', 'skyblue', 'rose', 'jgreen'];
+                        const docColor = docColors[di % docColors.length];
+                        return (
+                          <div key={d.id} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', padding: 10, borderRadius: 12 }} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className={`icon-badge ${docColor}`} style={{ width: 26, height: 26, borderRadius: 8 }}>
+                                <FileText style={{ width: 13, height: 13 }} />
+                              </div>
+                              <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{d.documentType} ({d.fileKey})</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => downloadAsset(d.fileUrl, d.originalName || d.fileKey || 'document')}
+                              style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--gold)' }}
+                              className="hover:underline"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex justify-end gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: 18, marginTop: 18 }}>
                   <button onClick={() => setIsEditing(true)} className="btn btn-primary btn-sm">
@@ -7671,81 +7935,79 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
               </>
             ) : (
               <form onSubmit={handleSaveChanges}>
-                <div className="form-grid">
-                  <div className="field">
-                    <label>Full Customer Name</label>
-                    <div className="input-wrap">
-                      <User />
-                      <input type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} />
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">1</div><h3>Identity &amp; Contact</h3></div>
+                  <div className="form-grid">
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><User /></div><b>Full Customer Name</b></div>
+                      <div className="input-wrap">
+                        <input type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="field">
-                    <label>Phone Number</label>
-                    <div className="input-wrap">
-                      <Phone />
-                      <input type="tel" required value={editPhoneVal} onChange={(e) => setEditPhoneVal(e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="form-grid">
-                  <div className="field">
-                    <label>Vehicle Number</label>
-                    <div className="input-wrap">
-                      <Car />
-                      <input type="text" required value={editVehicleNumber} onChange={(e) => setEditVehicleNumber(e.target.value.toUpperCase())} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label>Key Blank Code</label>
-                    <div className="input-wrap">
-                      <KeyRound />
-                      <input type="text" required value={editKeyNumber} onChange={(e) => setEditKeyNumber(e.target.value)} />
+                    <div className="reg-field" style={{ marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Phone Number</b></div>
+                      <div className="input-wrap">
+                        <input type="tel" required value={editPhoneVal} onChange={(e) => setEditPhoneVal(e.target.value)} />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 4 }}>
-                  <h3 className="eyebrow" style={{ marginBottom: 12 }}><MapPin /> Manual Address Details</h3>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">2</div><h3>Vehicle &amp; Key</h3></div>
+                  <div className="form-grid">
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Car /></div><b>Vehicle Number</b></div>
+                      <div className="input-wrap">
+                        <input type="text" required value={editVehicleNumber} onChange={(e) => setEditVehicleNumber(e.target.value.toUpperCase())} />
+                      </div>
+                    </div>
+                    <div className="reg-field" style={{ marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><KeyRound /></div><b>Key Blank Code</b></div>
+                      <div className="input-wrap">
+                        <input type="text" required value={editKeyNumber} onChange={(e) => setEditKeyNumber(e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="field">
-                    <label>Address Line</label>
+                <div className="reg-section">
+                  <div className="reg-section-head"><div className="reg-num">3</div><h3>Manual Address Details</h3></div>
+
+                  <div className="reg-field">
+                    <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><MapPin /></div><b>Address Line</b></div>
                     <div className="input-wrap">
-                      <MapPin />
                       <input type="text" required value={editAddressLine} onChange={(e) => setEditAddressLine(e.target.value)} />
                     </div>
                   </div>
 
                   <div className="form-grid">
-                    <div className="field">
-                      <label>District</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><Navigation /></div><b>District</b></div>
                       <div className="input-wrap">
-                        <Navigation />
                         <input type="text" required value={editDistrict} onChange={(e) => setEditDistrict(e.target.value)} />
                       </div>
                     </div>
-                    <div className="field">
-                      <label>State</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><Navigation /></div><b>State</b></div>
                       <div className="input-wrap">
-                        <Navigation />
                         <input type="text" required value={editStateVal} onChange={(e) => setEditStateVal(e.target.value)} />
                       </div>
                     </div>
-                    <div className="field full">
-                      <label>Country</label>
+                    <div className="reg-field full" style={{ marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Navigation /></div><b>Country</b></div>
                       <div className="input-wrap">
-                        <Navigation />
                         <input type="text" readOnly value="India" style={{ opacity: .55, cursor: 'not-allowed' }} />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 4 }}>
-                  <h3 className="eyebrow" style={{ marginBottom: 12 }}><ShieldCheck /> Update ID Verification Document</h3>
+                <div className="reg-section" style={{ marginBottom: 0 }}>
+                  <div className="reg-section-head"><div className="reg-num">4</div><h3>Update ID Verification Document</h3></div>
                   <div className="form-grid">
-                    <div className="field">
-                      <label>Document ID Type</label>
+                    <div className="reg-field">
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><ShieldCheck /></div><b>Document ID Type</b></div>
                       <select
                         className="sel"
                         value={editIdProofType} onChange={(e) => setEditIdProofType(e.target.value)}
@@ -7756,8 +8018,8 @@ function CustomerHistoryView({ t, api, searchDispatch }) {
                         <option value="Voter ID" disabled={selectedCust?.documents?.some(d => d.documentType === 'Voter ID' || d.documentType === 'Voter ID Copy')}>Voter ID</option>
                       </select>
                     </div>
-                    <div className="field">
-                      <label>Upload New File Copy</label>
+                    <div className="reg-field" style={{ marginBottom: 0 }}>
+                      <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><UploadCloud /></div><b>Upload New File Copy</b></div>
                       <div className="dropzone" style={{ padding: '16px 12px', position: 'relative' }}>
                         <UploadCloud style={{ width: 20, height: 20, color: 'var(--gold)' }} />
                         <span className="dz-sub">{editUploadFile ? editUploadFile.name : 'JPEG, PNG or PDF'}</span>
@@ -7858,10 +8120,10 @@ export function CustomerCareView({ t, api }) {
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 22 }}>
           <div>
             <div className="flex items-center gap-3" style={{ marginBottom: 10 }}>
-              <div className="icon-badge solid"><Phone /></div>
+              <div className="icon-badge maroon"><Phone /></div>
               <div>
                 <h2 style={{ fontSize: 16 }}>Contact Live Agent</h2>
-                <span className="pill-badge" style={{ marginTop: 6 }}><span className="dot" />Mon&ndash;Sat, 9 AM&ndash;7 PM IST</span>
+                <span className="pill-badge" style={{ marginTop: 6 }}><Clock style={{ width: 11, height: 11 }} />Mon&ndash;Sat, 9 AM&ndash;7 PM IST</span>
               </div>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 600, lineHeight: 1.6 }}>
@@ -7871,8 +8133,8 @@ export function CustomerCareView({ t, api }) {
 
           <div className="loc-box" style={{ background: 'rgba(37,211,102,0.08)', borderColor: 'rgba(37,211,102,0.28)' }}>
             <div className="loc-info">
-              <div className="icon-badge" style={{ background: 'rgba(37,211,102,0.16)', color: '#25d366' }}>
-                <Phone />
+              <div className="icon-badge jgreen">
+                <MessageCircle />
               </div>
               <div className="loc-text">
                 <span className="t1" style={{ display: 'block' }}>{whatsapp}</span>
@@ -7886,7 +8148,7 @@ export function CustomerCareView({ t, api }) {
               className="btn btn-sm"
               style={{ background: '#25d366', color: '#062b17', flexShrink: 0 }}
             >
-              <Phone /> Chat on WhatsApp
+              <MessageCircle /> Chat on WhatsApp
             </a>
           </div>
         </div>
@@ -7894,17 +8156,23 @@ export function CustomerCareView({ t, api }) {
         {/* Video Resources Card */}
         <div className="card">
           <div className="section-title" style={{ marginBottom: 14 }}>
-            <div>
-              <h2 style={{ fontSize: 16 }}>Locksmith Skill Upgrades</h2>
-              <span className="sub">Video tutorials from duplicate key experts</span>
+            <div className="flex items-center gap-3">
+              <div className="icon-badge teal" style={{ width: 34, height: 34, borderRadius: 10 }}>
+                <Radio style={{ width: 16, height: 16 }} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 16 }}>Locksmith Skill Upgrades</h2>
+                <span className="sub">Video tutorials from duplicate key experts</span>
+              </div>
             </div>
-            <Radio style={{ width: 18, height: 18, color: 'var(--gold)' }} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
             {config?.videos && config.videos.length > 0 ? (
               config.videos.map((vid, idx) => {
                 const { thumbnail } = getYoutubeThumbnailAndId(vid.url);
+                const badgeColors = ['purple', 'pink', 'blue', 'orange', 'teal', 'skyblue', 'rose', 'jgreen'];
+                const badgeColor = badgeColors[idx % badgeColors.length];
                 return (
                   <div key={idx} className="product-card" style={{ borderRadius: 14 }}>
                     <div className="product-img" style={{ height: 92 }}>
@@ -7916,7 +8184,7 @@ export function CustomerCareView({ t, api }) {
                         className="flex items-center justify-center"
                         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)' }}
                       >
-                        <span style={{ width: 32, height: 32, borderRadius: 999, background: 'linear-gradient(135deg, var(--gold), var(--gold-2))', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="animate-pulse">
+                        <span className={`icon-badge ${badgeColor} animate-pulse`} style={{ width: 32, height: 32, borderRadius: 999 }}>
                           <PlayCircle style={{ width: 18, height: 18 }} />
                         </span>
                       </a>
@@ -8000,23 +8268,24 @@ export function SupportConfigView({ t, api }) {
 
       <div className="card" style={{ maxWidth: 720 }}>
         <form onSubmit={handleSave}>
-          <div className="field">
-            <label>Customer Support WhatsApp Number</label>
-            <div className="input-wrap">
-              <MessageCircle />
-              <input
-                type="text" required value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="e.g. +91 98765 43210"
-              />
+          <div className="reg-section">
+            <div className="reg-section-head"><div className="reg-num">1</div><h3>Support Contact Channel</h3></div>
+            <div className="reg-field" style={{ marginBottom: 0 }}>
+              <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--jgreen)' }}><MessageCircle /></div><b>Customer Support WhatsApp Number <span className="req">*</span></b></div>
+              <div className="input-wrap">
+                <input
+                  type="text" required value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="e.g. +91 98765 43210"
+                />
+              </div>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 6 }}>
-            <div className="section-title" style={{ marginBottom: 24 }}>
-              <div>
-                <h2 style={{ fontSize: 15 }}>Support & Training Videos</h2>
-                <span className="sub">{videos.length} video{videos.length === 1 ? '' : 's'} configured</span>
-              </div>
+          <div className="reg-section" style={{ marginBottom: 0 }}>
+            <div className="reg-section-head">
+              <div className="reg-num">2</div>
+              <h3 style={{ flex: 1 }}>Support &amp; Training Videos</h3>
+              <span className="sub" style={{ marginRight: 10 }}>{videos.length} video{videos.length === 1 ? '' : 's'}</span>
               <button
                 type="button"
                 onClick={() => setVideos([...videos, { name: '', url: '' }])}
@@ -8032,7 +8301,10 @@ export function SupportConfigView({ t, api }) {
               </p>
             ) : (
               <div className="space-y-3" style={{ maxHeight: 380, overflowY: 'auto', paddingRight: 4, paddingTop: 2 }}>
-                {videos.map((vid, idx) => (
+                {videos.map((vid, idx) => {
+                  const rowColors = ['purple', 'pink', 'blue', 'orange', 'teal', 'skyblue', 'rose', 'jgreen'];
+                  const rowColor = rowColors[idx % rowColors.length];
+                  return (
                   <div key={idx} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 14, padding: 16, position: 'relative' }}>
                     <button
                       type="button"
@@ -8044,10 +8316,9 @@ export function SupportConfigView({ t, api }) {
                       <X />
                     </button>
                     <div className="form-grid" style={{ paddingRight: 36 }}>
-                      <div className="field" style={{ marginBottom: 0 }}>
-                        <label>Video Title / Name</label>
+                      <div className="reg-field" style={{ marginBottom: 0 }}>
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: `var(--${rowColor})` }}><PlayCircle /></div><b>Video Title / Name</b></div>
                         <div className="input-wrap">
-                          <PlayCircle />
                           <input
                             type="text" required value={vid.name}
                             onChange={(e) => {
@@ -8059,10 +8330,9 @@ export function SupportConfigView({ t, api }) {
                           />
                         </div>
                       </div>
-                      <div className="field" style={{ marginBottom: 0 }}>
-                        <label>YouTube URL</label>
+                      <div className="reg-field" style={{ marginBottom: 0 }}>
+                        <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><ExternalLink /></div><b>YouTube URL</b></div>
                         <div className="input-wrap">
-                          <ExternalLink />
                           <input
                             type="url" required value={vid.url}
                             onChange={(e) => {
@@ -8076,7 +8346,8 @@ export function SupportConfigView({ t, api }) {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -8338,39 +8609,38 @@ function ShopSettingsView({ t, api }) {
         </div>
 
         <form onSubmit={handleUpdate}>
-          <div className="field">
-            <label>Workspace Display Name</label>
-            <div className="input-wrap">
-              <Store />
-              <input type="text" required value={shopName} onChange={(e) => setShopName(e.target.value)} />
+          <div className="reg-section">
+            <div className="reg-section-head"><div className="reg-num">1</div><h3>Workspace Identity</h3></div>
+            <div className="reg-field">
+              <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Store /></div><b>Workspace Display Name <span className="req">*</span></b></div>
+              <div className="input-wrap">
+                <input type="text" required value={shopName} onChange={(e) => setShopName(e.target.value)} />
+              </div>
             </div>
-          </div>
 
-          <div className="field">
-            <label>Phone Number</label>
-            <div className="input-wrap">
-              <Phone />
-              <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91..." />
+            <div className="reg-field">
+              <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--skyblue)' }}><Phone /></div><b>Phone Number <span className="req">*</span></b></div>
+              <div className="input-wrap">
+                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91..." />
+              </div>
             </div>
-          </div>
 
-          <div className="field">
-            <label>Registered Address</label>
-            <div className="input-wrap">
-              <MapPin />
-              <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} />
+            <div className="reg-field" style={{ marginBottom: 0 }}>
+              <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--pink)' }}><MapPin /></div><b>Registered Address <span className="req">*</span></b></div>
+              <div className="input-wrap">
+                <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} />
+              </div>
             </div>
           </div>
 
           {/* Branding */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 4 }}>
-            <label className="eyebrow" style={{ marginBottom: 14 }}><Palette /> Branding</label>
+          <div className="reg-section">
+            <div className="reg-section-head"><div className="reg-num">2</div><h3>Branding</h3></div>
 
-            <div className="field">
-              <label>Logo URL / Image Source</label>
+            <div className="reg-field" style={{ marginBottom: logoUrl ? 12 : 0 }}>
+              <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--orange)' }}><ExternalLink /></div><b>Logo URL / Image Source</b></div>
               <div className="flex gap-2">
                 <div className="input-wrap" style={{ flex: 1 }}>
-                  <ExternalLink />
                   <input
                     type="text" value={logoUrl}
                     onChange={(e) => setLogoUrl(cleanGoogleImageUrl(e.target.value))}
@@ -8430,21 +8700,24 @@ function ShopSettingsView({ t, api }) {
           </div>
 
           {/* Shop Verification Documents Section */}
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 20 }}>
-            <label className="eyebrow" style={{ marginBottom: 14 }}><FileCheck /> Shop Verification Documents</label>
+          <div className="reg-section" style={{ marginBottom: 0 }}>
+            <div className="reg-section-head"><div className="reg-num">3</div><h3>Shop Verification Documents</h3></div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
-                { key: 'shopPhoto', label: 'Shop Photo', value: shopPhoto, icon: Camera, fileName: 'shop_photo' },
-                { key: 'shopLicense', label: 'Shop License', value: shopLicense, icon: FileCheck, fileName: 'shop_license' },
-                { key: 'ownerAadhaar', label: 'Owner Aadhaar', value: ownerAadhaar, icon: Fingerprint, fileName: 'owner_aadhaar' },
-              ].map(({ key, label, value, icon: SlotIcon, fileName }) => {
+                { key: 'shopPhoto', label: 'Shop Photo', value: shopPhoto, icon: Camera, fileName: 'shop_photo', color: 'purple' },
+                { key: 'shopLicense', label: 'Shop License', value: shopLicense, icon: FileCheck, fileName: 'shop_license', color: 'skyblue' },
+                { key: 'ownerAadhaar', label: 'Owner Aadhaar', value: ownerAadhaar, icon: Fingerprint, fileName: 'owner_aadhaar', color: 'maroon' },
+              ].map(({ key, label, value, icon: SlotIcon, fileName, color }) => {
                 const isPdf = value && value.fileUrl && value.fileUrl.toLowerCase().endsWith('.pdf');
                 const uploading = docUploading === key;
                 return (
                   <div key={key} style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 14, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div className="flex items-center justify-between">
-                      <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, fontWeight: 800, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                        <span className={`icon-badge ${color}`} style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0 }}><SlotIcon style={{ width: 10, height: 10 }} /></span>
+                        {label}
+                      </span>
                       <span className={`badge ${value ? 'badge-active' : 'badge-pending'}`} style={{ padding: '2px 8px', fontSize: 9 }}>
                         <span className="dot"></span>{value ? 'Uploaded' : 'Missing'}
                       </span>
@@ -8504,7 +8777,7 @@ function ShopSettingsView({ t, api }) {
             </div>
           </div>
 
-          <div className="flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 20 }}>
+          <div className="form-action-bar flex justify-end" style={{ borderTop: '1px solid var(--border)', paddingTop: 20, marginTop: 20 }}>
             <button type="submit" className="btn btn-primary">
               <Check />
               <span>Save Workspace Details</span>
@@ -8524,50 +8797,52 @@ function ShopSettingsView({ t, api }) {
           </h2>
         </div>
 
-        <div className="field" style={{ marginBottom: 14 }}>
-          <label style={{ marginBottom: 4 }}>Username / Name</label>
-          <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-0)', fontFamily: 'var(--display)' }}>{user.name}</p>
-        </div>
-        <div className="field" style={{ marginBottom: 14 }}>
-          <label style={{ marginBottom: 4 }}>Email Address</label>
-          <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-0)' }}>{user.email}</p>
-        </div>
-        <div className="field" style={{ marginBottom: 0 }}>
-          <label style={{ marginBottom: 4 }}>Phone Number</label>
-          <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-0)' }}>{phone || 'N/A'}</p>
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
-          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: 'var(--text-1)', marginBottom: 8, fontFamily: 'var(--display)' }}>
-            Workspace Password
-          </label>
-          <div className="flex items-center justify-between" style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 13, padding: '10px 14px' }}>
-            <div className="flex items-center gap-2">
-              <KeyRound style={{ width: 15, height: 15, color: 'var(--text-3)' }} />
-              {revealPassword ? (
-                <span style={{ color: 'var(--gold)', fontFamily: 'monospace', fontWeight: 800, fontSize: 13 }}>{revealedPasswordVal}</span>
-              ) : (
-                <span style={{ color: 'var(--text-3)', fontFamily: 'monospace', letterSpacing: '.15em' }}>••••••••</span>
-              )}
-            </div>
-            <button
-              onClick={() => (revealPassword ? setRevealPassword(false) : setShowPassVerifyModal(true))}
-              className="icon-btn"
-              title={revealPassword ? 'Hide password' : 'Reveal password'}
-            >
-              {revealPassword ? <EyeOff /> : <Eye />}
-            </button>
+        <div className="reg-section">
+          <div className="reg-section-head"><div className="reg-num">1</div><h3>Account Info</h3></div>
+          <div className="reg-field" style={{ marginBottom: 12 }}>
+            <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><User /></div><b>Username / Name</b></div>
+            <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-0)', fontFamily: 'var(--display)' }}>{user.name}</p>
+          </div>
+          <div className="reg-field" style={{ marginBottom: 12 }}>
+            <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Mail /></div><b>Email Address</b></div>
+            <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-0)' }}>{user.email}</p>
+          </div>
+          <div className="reg-field" style={{ marginBottom: 0 }}>
+            <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--teal)' }}><Phone /></div><b>Phone Number</b></div>
+            <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text-0)' }}>{phone || 'N/A'}</p>
           </div>
         </div>
 
-        <button
-          onClick={() => setOtpResetOpen(true)}
-          className="btn btn-outline btn-block"
-          style={{ marginTop: 16 }}
-        >
-          <Lock />
-          <span>Forgot Password? Reset via OTP</span>
-        </button>
+        <div className="reg-section" style={{ marginBottom: 0 }}>
+          <div className="reg-section-head"><div className="reg-num">2</div><h3>Account Security</h3></div>
+          <div className="reg-field" style={{ marginBottom: 14 }}>
+            <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--maroon)' }}><KeyRound /></div><b>Workspace Password</b></div>
+            <div className="flex items-center justify-between" style={{ background: 'var(--card-2)', border: '1px solid var(--border-2)', borderRadius: 13, padding: '10px 14px' }}>
+              <div className="flex items-center gap-2">
+                {revealPassword ? (
+                  <span style={{ color: 'var(--gold)', fontFamily: 'monospace', fontWeight: 800, fontSize: 13 }}>{revealedPasswordVal}</span>
+                ) : (
+                  <span style={{ color: 'var(--text-3)', fontFamily: 'monospace', letterSpacing: '.15em' }}>••••••••</span>
+                )}
+              </div>
+              <button
+                onClick={() => (revealPassword ? setRevealPassword(false) : setShowPassVerifyModal(true))}
+                className="icon-btn"
+                title={revealPassword ? 'Hide password' : 'Reveal password'}
+              >
+                {revealPassword ? <EyeOff /> : <Eye />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setOtpResetOpen(true)}
+            className="btn btn-outline btn-block"
+          >
+            <Lock />
+            <span>Forgot Password? Reset via OTP</span>
+          </button>
+        </div>
       </div>
       </div>
       </div>
@@ -8585,7 +8860,7 @@ function ShopSettingsView({ t, api }) {
             </button>
 
             <div className="flex flex-col items-center mb-6" style={{ textAlign: 'center' }}>
-              <div className="icon-badge solid" style={{ marginBottom: 10 }}><Lock /></div>
+              <div className="icon-badge maroon" style={{ marginBottom: 10 }}><Lock /></div>
               <h2 style={{ fontSize: 18 }}>Confirm your password</h2>
               <p style={{ color: 'var(--text-3)', fontSize: 12, fontWeight: 600, marginTop: 4 }}>Verify your identity to reveal saved credentials.</p>
             </div>
@@ -8598,10 +8873,9 @@ function ShopSettingsView({ t, api }) {
                 </div>
               )}
 
-              <div className="field">
-                <label>Account Password</label>
+              <div className="reg-field">
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Lock /></div><b>Account Password <span className="req">*</span></b></div>
                 <div className="input-wrap">
-                  <Lock />
                   <input
                     type={showVerifyPass ? "text" : "password"} required value={passVerifyInput} onChange={(e) => setPassVerifyInput(e.target.value)}
                     placeholder="Enter password" style={{ paddingRight: 42 }}
@@ -8663,10 +8937,9 @@ function ShopSettingsView({ t, api }) {
                     Phone Recovery
                   </button>
                 </div>
-                <div className="field">
-                  <label>{otpResetMethod === 'phone' ? 'Registered Phone Number' : 'Registered Email Address'}</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: otpResetMethod === 'phone' ? 'var(--teal)' : 'var(--blue)' }}>{otpResetMethod === 'phone' ? <Phone /> : <Mail />}</div><b>{otpResetMethod === 'phone' ? 'Registered Phone Number' : 'Registered Email Address'} <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    {otpResetMethod === 'phone' ? <Phone /> : <Mail />}
                     <input
                       type="text" required value={otpResetIdentifier} onChange={(e) => setOtpResetIdentifier(e.target.value)}
                       placeholder={otpResetMethod === 'phone' ? '+91 99999 99999' : 'owner@shop.com'}
@@ -8713,10 +8986,9 @@ function ShopSettingsView({ t, api }) {
             ) : (
               <form onSubmit={handleOtpResetSubmit}>
                 {otpResetError && <div style={{ color: '#b91c1c', fontSize: 12, fontWeight: 600, marginBottom: 14 }}>{otpResetError}</div>}
-                <div className="field">
-                  <label>New Password</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><Lock /></div><b>New Password <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <Lock />
                     <input
                       type={otpShowNewPass ? "text" : "password"} required value={otpResetNewPassword} onChange={(e) => setOtpResetNewPassword(e.target.value)}
                       placeholder="Min 6 characters" style={{ paddingRight: 42 }}
@@ -8731,10 +9003,9 @@ function ShopSettingsView({ t, api }) {
                     </button>
                   </div>
                 </div>
-                <div className="field">
-                  <label>Confirm Password</label>
+                <div className="reg-field">
+                  <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--rose)' }}><Lock /></div><b>Confirm Password <span className="req">*</span></b></div>
                   <div className="input-wrap">
-                    <Lock />
                     <input
                       type={otpShowConfirmPass ? "text" : "password"} required value={otpResetConfirmPassword} onChange={(e) => setOtpResetConfirmPassword(e.target.value)}
                       placeholder="Retype password" style={{ paddingRight: 42 }}
@@ -8887,19 +9158,20 @@ export function ReportsPortalView({ t, api }) {
         </div>
 
         <form onSubmit={handleGenerate}>
-          <div className="form-grid">
-            <div className="field">
-              <label>From Date</label>
-              <div className="input-wrap">
-                <Calendar />
-                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <div className="reg-section">
+            <div className="reg-section-head"><div className="reg-num">1</div><h3>Report Date Range</h3></div>
+            <div className="row2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="reg-field" style={{ marginBottom: 0 }}>
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--blue)' }}><Calendar /></div><b>From Date</b></div>
+                <div className="input-wrap">
+                  <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                </div>
               </div>
-            </div>
-            <div className="field">
-              <label>To Date</label>
-              <div className="input-wrap">
-                <Calendar />
-                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              <div className="reg-field" style={{ marginBottom: 0 }}>
+                <div className="reg-field-label"><div className="reg-ico" style={{ background: 'var(--purple)' }}><CalendarRange /></div><b>To Date</b></div>
+                <div className="input-wrap">
+                  <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                </div>
               </div>
             </div>
           </div>
@@ -8921,14 +9193,15 @@ export function ReportsPortalView({ t, api }) {
           <div className="stat-grid two">
             <div className="stat-card" style={{ animationDelay: '.05s' }}>
               <div className="stat-top">
-                <div className="icon-badge"><FileText /></div>
+                <div className="icon-badge purple"><FileText /></div>
+                <span className="stat-trend"><TrendingUp />exported</span>
               </div>
               <div className="stat-num"><CountUp value={reportData.length} /></div>
               <div className="stat-label">Records in Report</div>
             </div>
             <div className="stat-card" style={{ animationDelay: '.15s' }}>
               <div className="stat-top">
-                <div className="icon-badge"><Calendar /></div>
+                <div className="icon-badge blue"><Calendar /></div>
               </div>
               <div className="stat-num" style={{ fontSize: 18 }}>{fromDate || 'All time'} &rarr; {toDate || 'Today'}</div>
               <div className="stat-label">Date Range Covered</div>
@@ -9027,8 +9300,8 @@ export function ReportsPortalView({ t, api }) {
                           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-28 overflow-visible">
                             <defs>
                               <linearGradient id="areaGradientReport" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.4" />
-                                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
+                                <stop offset="0%" stopColor="#C89416" stopOpacity="0.4" />
+                                <stop offset="100%" stopColor="#C89416" stopOpacity="0.0" />
                               </linearGradient>
                             </defs>
                             
@@ -9040,12 +9313,12 @@ export function ReportsPortalView({ t, api }) {
                             <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />
 
                             {/* Trend Line */}
-                            {pathD && <path d={pathD} fill="none" stroke="#7c3aed" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />}
+                            {pathD && <path d={pathD} fill="none" stroke="#7A1220" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-draw" />}
 
                             {/* Interactive dots */}
                             {coords.map((c, i) => (
                               <g key={i} className="group cursor-pointer">
-                                <circle cx={c.x} cy={c.y} r="4" fill="#7c3aed" stroke="#ffffff" strokeWidth="1.5" className="chart-dot-pop" style={{ animationDelay: `${0.6 + i * 0.06}s` }} />
+                                <circle cx={c.x} cy={c.y} r="4" fill="#7A1220" stroke="#ffffff" strokeWidth="1.5" className="chart-dot-pop" style={{ animationDelay: `${0.6 + i * 0.06}s` }} />
                                 <text x={c.x} y={c.y - 8} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#1e1b2e" className="opacity-0 group-hover:opacity-100 transition-opacity">
                                   {c.val}
                                 </text>
@@ -9097,13 +9370,28 @@ export function ReportsPortalView({ t, api }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {reportData.map((row, idx) => (
-                    <tr key={idx}>
-                      {Object.keys(row).slice(0, 4).map((header, hIdx) => (
-                        <td key={header} className={hIdx === 0 ? 'cell-primary' : ''}>{row[header]}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {reportData.map((row, idx) => {
+                    const rowColors = ['purple', 'blue', 'pink', 'orange', 'teal', 'jgreen', 'skyblue', 'rose', 'maroon'];
+                    const rowColor = rowColors[idx % rowColors.length];
+                    return (
+                      <tr key={idx}>
+                        {Object.keys(row).slice(0, 4).map((header, hIdx) => (
+                          hIdx === 0 ? (
+                            <td key={header} className="cell-primary">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div className={`icon-badge ${rowColor}`} style={{ width: 34, height: 34, borderRadius: 10 }}>
+                                  <User className="h-4 w-4" />
+                                </div>
+                                {row[header]}
+                              </div>
+                            </td>
+                          ) : (
+                            <td key={header}>{row[header]}</td>
+                          )
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
